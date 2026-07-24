@@ -9,13 +9,15 @@
   "files": [
     "dist",
     "assets",
+    "docs",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsx scripts/clean-dist.ts && tsc -p tsconfig.json",
     "dev": "tsx src/cli.tsx",
+    "preview:tui": "tsx scripts/render-tui-previews.ts",
     "start": "node dist/cli.js",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

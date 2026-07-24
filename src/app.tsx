@@ -43,6 +43,9 @@ export interface AppProps {
   graphicsMode?: GraphicsMode;
 }
 
+const ANIMATION_FRAME_MS = 180;
+const ANIMATION_TICKS = 24;
+
 function useTerminalSize(): { columns: number; rows: number } {
   const { stdout } = useStdout();
   const [size, setSize] = useState({
@@ -97,21 +100,31 @@ export function App(props: AppProps) {
     client.dispose();
   }, [audio, client]);
 
-  const animationActive =
-    state.approval !== null ||
-    simulation !== null ||
-    (state.turn === "failed" && !failureDismissed) ||
-    state.turn === "running" ||
-    scene === "stations";
+  const animationKey = state.approval
+    ? `approval:${state.approval.id}`
+    : simulation
+      ? `simulation:${simulation}`
+      : state.turn === "failed" && !failureDismissed
+        ? `failure:${state.diagnostic}`
+        : state.turn === "running"
+          ? `turn:${state.threadId}`
+          : scene === "stations"
+            ? `stations:${stationSelection}`
+            : null;
 
   useEffect(() => {
-    const timer = setInterval(
-      () => setPhase((value) => (value + 1) % 120),
-      animationActive ? 90 : 600,
-    );
+    setPhase(0);
+    if (!animationKey) return;
+
+    let tick = 0;
+    const timer = setInterval(() => {
+      tick += 1;
+      setPhase(tick);
+      if (tick >= ANIMATION_TICKS) clearInterval(timer);
+    }, ANIMATION_FRAME_MS);
     timer.unref();
     return () => clearInterval(timer);
-  }, [animationActive]);
+  }, [animationKey]);
 
   useEffect(() => {
     if (state.turn === "running") {
@@ -395,6 +408,7 @@ export function App(props: AppProps) {
     return (
       <Box flexDirection="column" paddingX={1} height={size.rows}>
         <TsunamiOverlay
+          state={state}
           phase={phase}
           columns={size.columns}
           rows={size.rows}

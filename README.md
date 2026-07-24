@@ -31,10 +31,12 @@ keyboard ──> EVA TUI (Ink/React) ──JSONL──> codex app-server ──>
   dossier; and multi-spine station ribs with skewed status blades.
 - Includes selected, attributed upstream visual assets under their modified
   MIT license rather than substituting unrelated wave or radar imagery.
-- Retains a portable terminal cell-canvas renderer with a 2×4 Braille-dot
-  pixel grid as the automatic fallback.
-- Runs active warning and station animation at approximately 11 FPS while
-  reducing the refresh rate for idle scenes.
+- Adds a portable semantic TUI renderer for Apple Terminal and other standard
+  terminals. It constructs hazard rails, long-hex panels, alert placards,
+  dossiers, linked ribs, solid color chassis, and real text directly in
+  terminal cells; it never downsamples the Kitty image into block pixels.
+- Runs geometry as a staged reveal, then leaves selected warning triangles,
+  rails, and signals on a terminal-driven pulse with no idle JavaScript timer.
 - Uses an operations-first command-center screen instead of making chat the
   primary canvas.
 - Provides Operations, Stations, Impact, and Transcript scenes.
@@ -154,13 +156,17 @@ Unicode placeholder cells. Automatic mode stays on text inside tmux because
 Kitty passthrough must be enabled explicitly; after configuring tmux
 passthrough, request Kitty mode.
 
-The portable fallback rasterizes the same reference-grounded SVG compositions
-and imported warning assets used by Tier 3, then encodes each 2×2 pixel tile as
-a true-color Unicode quadrant cell. This preserves the real scene organization,
-typography, asset silhouettes, and color fields in Apple Terminal without
-requiring a terminal graphics protocol. If SVG rasterization fails, a secondary
-hybrid cell-canvas fallback retains Braille for fine lines and full or half
-blocks for filled panels.
+The portable renderer is a separate semantic composition of the same scene
+hierarchy. It uses true-color ANSI styling, real selectable text, Unicode
+chassis lines, East Asian double-width labels, and discrete animation. It does
+not rasterize the SVG or encode pixels as quadrant, half-block, or Braille
+cells. This gives Apple Terminal a sharp operational layout whose geometry and
+labels remain stable across font sizes.
+
+The reusable visual vocabulary, reference mapping, responsive rules, animation
+rules, and anti-patterns are documented in
+[`docs/TUI_DESIGN_GUIDE.md`](docs/TUI_DESIGN_GUIDE.md). Run `pnpm preview:tui`
+to generate deterministic standard and compact scene previews.
 
 ## Music and visual references
 
@@ -218,6 +224,7 @@ than hanging the turn.
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm preview:tui
 ```
 
 Licensed under Apache-2.0.

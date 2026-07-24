@@ -2,6 +2,7 @@
 
 import { resolve } from "node:path";
 import process from "node:process";
+import { homedir } from "node:os";
 import React from "react";
 import { render } from "ink";
 
@@ -11,9 +12,13 @@ import {
   supportsKittyGraphicsEnvironment,
   type GraphicsMode,
 } from "./graphics/kitty.js";
+import { startVisualConsole } from "./visual/server.js";
 
 interface CliOptions extends AppProps {
   help: boolean;
+  mode: "tui" | "visual";
+  visualPort: number;
+  openVisual: boolean;
 }
 
 function takeValue(args: string[], index: number, flag: string): string {
@@ -23,6 +28,16 @@ function takeValue(args: string[], index: number, flag: string): string {
   }
   args.splice(index, 2);
   return value;
+}
+
+function resolveUserPath(value: string): string {
+  if (value === "~") {
+    return homedir();
+  }
+  if (value.startsWith("~/")) {
+    return resolve(homedir(), value.slice(2));
+  }
+  return resolve(value);
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -35,6 +50,10 @@ function parseArgs(argv: string[]): CliOptions {
   let graphicsMode = (process.env.EVA_TUI_GRAPHICS ?? "auto") as GraphicsMode;
   let audioOn = false;
   let help = false;
+  let mode: "tui" | "visual" = "tui";
+  let modeWasSet = false;
+  let visualPort = 4587;
+  let openVisual = true;
 
   for (let index = 0; index < args.length; ) {
     const argument = args[index];
@@ -43,6 +62,16 @@ function parseArgs(argv: string[]): CliOptions {
       args.splice(index, 1);
     } else if (argument === "--audio") {
       audioOn = true;
+      args.splice(index, 1);
+    } else if (argument === "--tui" || argument === "--visual") {
+      if (modeWasSet) {
+        throw new Error("--tui and --visual cannot be used together.");
+      }
+      mode = argument === "--visual" ? "visual" : "tui";
+      modeWasSet = true;
+      args.splice(index, 1);
+    } else if (argument === "--no-open") {
+      openVisual = false;
       args.splice(index, 1);
     } else if (argument === "--cwd") {
       cwd = takeValue(args, index, "--cwd");
@@ -56,6 +85,9 @@ function parseArgs(argv: string[]): CliOptions {
       youtubeUrl = takeValue(args, index, "--youtube");
     } else if (argument === "--graphics") {
       graphicsMode = takeValue(args, index, "--graphics") as GraphicsMode;
+    } else if (argument === "--port") {
+      const value = takeValue(args, index, "--port");
+      visualPort = Number.parseInt(value, 10);
     } else {
       throw new Error(`Unknown argument: ${argument ?? ""}`);
     }
@@ -70,36 +102,47 @@ function parseArgs(argv: string[]): CliOptions {
   if (!["auto", "kitty", "text"].includes(graphicsMode)) {
     throw new Error("--graphics must be auto, kitty, or text.");
   }
+  if (!Number.isInteger(visualPort) || visualPort < 0 || visualPort > 65_535) {
+    throw new Error("--port must be an integer from 0 to 65535.");
+  }
 
   return {
-    cwd: resolve(cwd),
+    cwd: resolveUserPath(cwd),
     audioOn,
     graphicsMode,
     help,
+    mode,
+    visualPort,
+    openVisual,
     ...(model ? { model } : {}),
     ...(codexBin ? { codexBin } : {}),
-    ...(musicPath ? { musicPath: resolve(musicPath) } : {}),
+    ...(musicPath ? { musicPath: resolveUserPath(musicPath) } : {}),
     ...(youtubeUrl ? { youtubeUrl } : {}),
   };
 }
 
 function printHelp(): void {
-  process.stdout.write(`EVA TUI — functional Codex operational interface
+  process.stdout.write(`EVA — functional Codex operational interface
 
 Usage:
-  eva [options]
+  eva --tui [options]       Terminal interface (default)
+  eva --visual [options]    Local graphical operations console
 
 Options:
+  --tui              Use the terminal interface
+  --visual           Use the local graphical console
   --cwd <path>       Workspace to open (default: current directory)
   --model <name>     Override the configured Codex model
   --codex <path>     Codex binary to launch (default: codex)
   --music <path>     User-supplied audio file; never copied into the project
   --youtube <url>    Official YouTube companion-player URL
-  --graphics <mode>  auto, kitty (Tier 3), or text (ANSI raster; default: auto)
+  --graphics <mode>  auto, kitty (Tier 3), or text (semantic TUI; default: auto)
   --audio            Start audio immediately (off by default)
+  --port <number>    Visual console port (default: 4587; 0 selects a free port)
+  --no-open          Do not open the visual console in the default browser
   -h, --help         Show this help
 
-Controls:
+TUI controls:
   Enter              Send instruction
   Tab / Shift-Tab    Cycle operational views
   Up / Down          Inspect Station Matrix nodes
@@ -117,6 +160,19 @@ async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
     printHelp();
+    return;
+  }
+  if (options.mode === "visual") {
+    await startVisualConsole({
+      cwd: options.cwd,
+      audioOn: options.audioOn,
+      port: options.visualPort,
+      openBrowser: options.openVisual,
+      ...(options.model ? { model: options.model } : {}),
+      ...(options.codexBin ? { codexBin: options.codexBin } : {}),
+      ...(options.musicPath ? { musicPath: options.musicPath } : {}),
+      ...(options.youtubeUrl ? { youtubeUrl: options.youtubeUrl } : {}),
+    });
     return;
   }
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -138,10 +194,21 @@ async function main(): Promise<void> {
     );
   }
 
-  const instance = render(<App {...options} />, {
+  const instance = render(
+    <App
+      cwd={options.cwd}
+      audioOn={options.audioOn}
+      graphicsMode={options.graphicsMode}
+      {...(options.model ? { model: options.model } : {})}
+      {...(options.codexBin ? { codexBin: options.codexBin } : {})}
+      {...(options.musicPath ? { musicPath: options.musicPath } : {})}
+      {...(options.youtubeUrl ? { youtubeUrl: options.youtubeUrl } : {})}
+    />,
+    {
     exitOnCtrlC: false,
     alternateScreen: true,
-  });
+    },
+  );
   await instance.waitUntilExit();
 }
 

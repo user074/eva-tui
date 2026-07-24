@@ -3,8 +3,6 @@ import { Box, Text } from "ink";
 
 import type { GraphicsBackend } from "../graphics/kitty.js";
 import type { AppState, PendingApproval, PlanStep } from "../state/model.js";
-import { AnsiGraphicView } from "./ansi-graphic-view.js";
-import { CellCanvasView } from "./cell-canvas-view.js";
 import { Panel, Transcript } from "./components.js";
 import {
   activityTrace,
@@ -16,11 +14,7 @@ import {
   synchronization,
   type Scene,
 } from "./operations-model.js";
-import {
-  earthquakeGraphic,
-  stationGraphic,
-  tsunamiGraphic,
-} from "./scene-graphics.js";
+import { SemanticGraphicView } from "./semantic-graphic-view.js";
 import { TerminalGraphicView } from "./terminal-graphic-view.js";
 import { statusColor, theme } from "./theme.js";
 
@@ -309,19 +303,23 @@ export function StationsScreen({
   ).length;
   const canvasColumns = Math.max(24, columns - 6);
   const canvasRows = Math.max(8, Math.min(24, rows - 12));
-  const frame = stationGraphic(
-    stations,
-    normalizedSelection,
-    canvasColumns,
-    canvasRows,
-    phase,
+  const semantic = (
+    <SemanticGraphicView
+      scene="stations"
+      columns={canvasColumns}
+      rows={canvasRows}
+      phase={phase}
+      stations={stations}
+      selectedIndex={normalizedSelection}
+      state={state}
+    />
   );
 
   return (
     <Box flexDirection="column" flexGrow={1}>
       <Box borderStyle="double" borderColor={theme.orange} paddingX={1} justifyContent="space-between">
         <Text color={theme.orange} bold>
-          観測所網 / {graphicsBackend === "kitty" ? "TIER 3 RIB MATRIX" : "HYBRID ANSI STATION MATRIX"}
+          観測所網 / {graphicsBackend === "kitty" ? "TIER 3 RIB MATRIX" : "SEMANTIC RIB MATRIX"}
         </Text>
         <Text color={ready === stations.length ? theme.green : theme.amber} bold>
           {ready.toString().padStart(2, "0")} / {stations.length.toString().padStart(2, "0")} NOMINAL
@@ -336,17 +334,10 @@ export function StationsScreen({
             rows={canvasRows}
             stations={stations}
             selectedIndex={normalizedSelection}
-            fallback={<CellCanvasView frame={frame} />}
+            fallback={semantic}
           />
         ) : (
-          <AnsiGraphicView
-            scene="stations"
-            columns={canvasColumns}
-            rows={canvasRows}
-            stations={stations}
-            selectedIndex={normalizedSelection}
-            fallback={<CellCanvasView frame={frame} />}
-          />
+          semantic
         )}
       </Box>
       {selected ? (
@@ -569,13 +560,22 @@ export function EarthquakeOverlay({
   const failed = [...state.activity]
     .reverse()
     .find((item) => item.status.toLowerCase().includes("fail"));
-  const graphic = earthquakeGraphic(
-    Math.max(28, Math.min(58, columns - 10)),
-    rows < 28 ? 5 : 8,
-    phase,
-  );
   const graphicColumns = Math.max(24, columns - 2);
   const graphicRows = Math.max(8, rows - 3);
+  const incidentDetail = simulation
+    ? "Fixture command failure detected in the simulated execution layer."
+    : state.diagnostic || failed?.label || "The active turn ended in a failed state.";
+  const semantic = (
+    <SemanticGraphicView
+      scene="earthquake"
+      columns={graphicColumns}
+      rows={graphicRows}
+      phase={phase}
+      incidentDetail={incidentDetail}
+      simulation={simulation}
+      state={state}
+    />
+  );
   return (
     <Box flexDirection="column" height={rows} justifyContent="space-between">
       <Text backgroundColor={simulation ? theme.amber : theme.red} color={theme.black} bold>
@@ -588,53 +588,44 @@ export function EarthquakeOverlay({
           scene="earthquake"
           columns={graphicColumns}
           rows={graphicRows}
-          incidentDetail={
-            simulation
-              ? "Fixture command failure detected in the simulated execution layer."
-              : state.diagnostic || failed?.label || "The active turn ended in a failed state."
-          }
+          incidentDetail={incidentDetail}
           simulation={simulation}
-          fallback={<CellCanvasView frame={graphic} />}
+          fallback={semantic}
         />
       ) : (
-        <AnsiGraphicView
-          scene="earthquake"
-          columns={graphicColumns}
-          rows={graphicRows}
-          incidentDetail={
-            simulation
-              ? "Fixture command failure detected in the simulated execution layer."
-              : state.diagnostic || failed?.label || "The active turn ended in a failed state."
-          }
-          simulation={simulation}
-          fallback={<CellCanvasView frame={graphic} />}
-        />
+        semantic
       )}
       <Text color={theme.dim}>
-        [ESC/X] DISMISS · {graphicsBackend === "kitty" ? "KITTY GPU" : "ANSI QUADRANT"} LAYER · INCIDENT INPUT LOCKED
+        [ESC/X] DISMISS · {graphicsBackend === "kitty" ? "KITTY GPU" : "SEMANTIC TUI"} LAYER · INCIDENT INPUT LOCKED
       </Text>
     </Box>
   );
 }
 
 export function TsunamiOverlay({
+  state,
   phase,
   columns,
   rows,
   graphicsBackend,
 }: {
+  state: AppState;
   phase: number;
   columns: number;
   rows: number;
   graphicsBackend: GraphicsBackend;
 }): ReactNode {
-  const graphic = tsunamiGraphic(
-    Math.max(30, Math.min(64, columns - 10)),
-    rows < 28 ? 8 : 12,
-    phase,
-  );
   const graphicColumns = Math.max(24, columns - 2);
   const graphicRows = Math.max(8, rows - 3);
+  const semantic = (
+    <SemanticGraphicView
+      scene="tsunami"
+      columns={graphicColumns}
+      rows={graphicRows}
+      phase={phase}
+      state={state}
+    />
+  );
   return (
     <Box flexDirection="column" height={rows} justifyContent="space-between">
       <Text backgroundColor={theme.amber} color={theme.black} bold>
@@ -645,18 +636,13 @@ export function TsunamiOverlay({
           scene="tsunami"
           columns={graphicColumns}
           rows={graphicRows}
-          fallback={<CellCanvasView frame={graphic} />}
+          fallback={semantic}
         />
       ) : (
-        <AnsiGraphicView
-          scene="tsunami"
-          columns={graphicColumns}
-          rows={graphicRows}
-          fallback={<CellCanvasView frame={graphic} />}
-        />
+        semantic
       )}
       <Text color={theme.dim}>
-        [ESC/X] DISMISS · {graphicsBackend === "kitty" ? "KITTY GPU" : "ANSI QUADRANT"} LAYER · FIXTURE NODES ONLY
+        [ESC/X] DISMISS · {graphicsBackend === "kitty" ? "KITTY GPU" : "SEMANTIC TUI"} LAYER · FIXTURE NODES ONLY
       </Text>
     </Box>
   );
