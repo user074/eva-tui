@@ -83,7 +83,11 @@ test("plan, token, and diff telemetry uses protocol values", () => {
     output: 30,
     contextWindow: 1_000,
   });
-  assert.deepEqual(diffed.diff, { additions: 2, deletions: 1 });
+  assert.deepEqual(diffed.diff, {
+    additions: 2,
+    deletions: 1,
+    files: ["file"],
+  });
 });
 
 test("command approval produces a decision panel", () => {

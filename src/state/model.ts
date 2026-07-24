@@ -42,6 +42,7 @@ export interface TokenState {
 export interface DiffState {
   additions: number;
   deletions: number;
+  files: string[];
 }
 
 export interface McpState {
@@ -111,6 +112,7 @@ export const initialState: AppState = {
   diff: {
     additions: 0,
     deletions: 0,
+    files: [],
   },
   mcp: [],
   approval: null,

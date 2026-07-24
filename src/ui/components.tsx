@@ -57,7 +57,7 @@ export function Header({
   ).join("");
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" flexShrink={0}>
       <Box justifyContent="space-between">
         <Text color={theme.orange} bold>
           EVA://CODEX <Text color={theme.purple}>OPERATIONAL INTERFACE</Text>

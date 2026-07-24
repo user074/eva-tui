@@ -92,17 +92,29 @@ function upsertActivity(
   return next;
 }
 
-function diffStats(diff: string): { additions: number; deletions: number } {
+export function diffStats(diff: string): {
+  additions: number;
+  deletions: number;
+  files: string[];
+} {
   let additions = 0;
   let deletions = 0;
+  const files = new Set<string>();
   for (const line of diff.split("\n")) {
     if (line.startsWith("+") && !line.startsWith("+++")) {
       additions += 1;
     } else if (line.startsWith("-") && !line.startsWith("---")) {
       deletions += 1;
     }
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
+      const rawPath = line.slice(4).split("\t")[0]?.trim() ?? "";
+      const path = rawPath.replace(/^[ab]\//, "");
+      if (path && path !== "/dev/null") {
+        files.add(path);
+      }
+    }
   }
-  return { additions, deletions };
+  return { additions, deletions, files: [...files] };
 }
 
 function approvalFromRequest(request: ServerRequest): PendingApproval | null {
@@ -226,7 +238,7 @@ function reduceNotification(
       turnId: asString(turn.id),
       notice: "SYNCHRONIZATION IN PROGRESS",
       plan: [],
-      diff: { additions: 0, deletions: 0 },
+      diff: { additions: 0, deletions: 0, files: [] },
     };
   }
 

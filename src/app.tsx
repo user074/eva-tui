@@ -10,15 +10,23 @@ import type {
 } from "./codex/protocol.js";
 import { appReducer } from "./state/reducer.js";
 import { initialState } from "./state/model.js";
+import { Header } from "./ui/components.js";
 import {
-  Activity,
-  Approval,
-  CompactTelemetry,
-  Header,
-  Panel,
-  Telemetry,
-  Transcript,
-} from "./ui/components.js";
+  cycleScene,
+  SCENES,
+  type Scene,
+  type Simulation,
+} from "./ui/operations-model.js";
+import {
+  ApprovalOverlay,
+  EarthquakeOverlay,
+  ImpactScreen,
+  OperationsScreen,
+  SceneTabs,
+  StationsScreen,
+  TranscriptScreen,
+  TsunamiOverlay,
+} from "./ui/scenes.js";
 import { theme } from "./ui/theme.js";
 
 export interface AppProps {
@@ -60,6 +68,10 @@ export function App(props: AppProps) {
   const [composer, setComposer] = useState("");
   const [phase, setPhase] = useState(0);
   const [audioStatus, setAudioStatus] = useState("OFF");
+  const [scene, setScene] = useState<Scene>("operations");
+  const [simulation, setSimulation] = useState<Simulation | null>(null);
+  const [failureDismissed, setFailureDismissed] = useState(false);
+  const [stationSelection, setStationSelection] = useState(0);
   const messageCounter = useRef(0);
   const client = useMemo(() => new CodexClient(), []);
   const audio = useMemo(
@@ -83,6 +95,12 @@ export function App(props: AppProps) {
   }, []);
 
   useEffect(() => {
+    if (state.turn === "running") {
+      setFailureDismissed(false);
+    }
+  }, [state.turn]);
+
+  useEffect(() => {
     const onNotification = (notification: CodexNotification): void => {
       dispatch({ type: "notification", notification });
     };
@@ -97,7 +115,7 @@ export function App(props: AppProps) {
       } else {
         client.respondWithError(
           request.id,
-          `EVA TUI 0.1 does not yet implement ${request.method}.`,
+          `EVA TUI 0.3 does not yet implement ${request.method}.`,
         );
         dispatch({
           type: "diagnostic",
@@ -176,6 +194,38 @@ export function App(props: AppProps) {
         setComposer("");
         return;
       }
+      if (text === "/simulate earthquake" || text === "/eq") {
+        setSimulation("earthquake");
+        setComposer("");
+        return;
+      }
+      if (text === "/simulate tsunami" || text === "/tsunami") {
+        setSimulation("tsunami");
+        setComposer("");
+        return;
+      }
+      if (text.startsWith("/view ")) {
+        const target = text.slice(6).trim() as Scene;
+        if (SCENES.includes(target)) {
+          setScene(target);
+          dispatch({ type: "notice", message: `${target.toUpperCase()} DISPLAY ACTIVE` });
+        } else {
+          dispatch({
+            type: "notice",
+            message: `UNKNOWN VIEW — ${SCENES.join(", ").toUpperCase()}`,
+          });
+        }
+        setComposer("");
+        return;
+      }
+      if (text === "/help") {
+        dispatch({
+          type: "notice",
+          message: "TAB VIEWS · /VIEW <NAME> · /SIMULATE EARTHQUAKE|TSUNAMI",
+        });
+        setComposer("");
+        return;
+      }
       if (text === "/quit") {
         shutdown();
         exit();
@@ -213,6 +263,12 @@ export function App(props: AppProps) {
   );
 
   useInput((input, key) => {
+    if (key.ctrl && input === "q") {
+      shutdown();
+      exit();
+      return;
+    }
+
     if (state.approval) {
       let decision: ApprovalDecision | null = null;
       if (input.toLowerCase() === "y") decision = "accept";
@@ -231,11 +287,14 @@ export function App(props: AppProps) {
       return;
     }
 
-    if (key.ctrl && input === "q") {
-      shutdown();
-      exit();
+    if (simulation || (state.turn === "failed" && !failureDismissed)) {
+      if (key.escape || input.toLowerCase() === "x") {
+        setSimulation(null);
+        setFailureDismissed(true);
+      }
       return;
     }
+
     if (key.ctrl && input === "c") {
       if (state.turn === "running") {
         void client.interrupt();
@@ -247,6 +306,22 @@ export function App(props: AppProps) {
     }
     if (key.ctrl && input === "g") {
       audio.toggle();
+      return;
+    }
+    if (key.tab) {
+      setScene((current) => cycleScene(current, key.shift ? -1 : 1));
+      return;
+    }
+    if (scene === "stations" && composer.length === 0 && key.upArrow) {
+      setStationSelection((value) => value - 1);
+      return;
+    }
+    if (scene === "stations" && composer.length === 0 && key.downArrow) {
+      setStationSelection((value) => value + 1);
+      return;
+    }
+    if (key.escape) {
+      setScene("operations");
       return;
     }
     if (key.return) {
@@ -268,49 +343,66 @@ export function App(props: AppProps) {
     }
   });
 
-  const wide = size.columns >= 105;
-  const transcriptLimit = wide
-    ? Math.max(3, Math.floor(size.rows / 7))
-    : Math.max(2, Math.floor(size.rows / 12));
-  const maxEntryChars = wide
-    ? Math.max(400, Math.floor(size.columns * size.rows * 0.18))
-    : Math.max(140, Math.floor(size.columns * 2.4));
   const promptColor = state.turn === "running" ? theme.dim : theme.cyan;
+
+  if (state.approval) {
+    return (
+      <Box flexDirection="column" paddingX={1} height={size.rows}>
+        <ApprovalOverlay
+          approval={state.approval}
+          phase={phase}
+          columns={size.columns}
+        />
+      </Box>
+    );
+  }
+
+  if (simulation === "earthquake" || (state.turn === "failed" && !failureDismissed)) {
+    return (
+      <Box flexDirection="column" paddingX={1} height={size.rows}>
+        <EarthquakeOverlay
+          state={state}
+          phase={phase}
+          simulation={simulation === "earthquake"}
+          columns={size.columns}
+        />
+      </Box>
+    );
+  }
+
+  if (simulation === "tsunami") {
+    return (
+      <Box flexDirection="column" paddingX={1} height={size.rows}>
+        <TsunamiOverlay phase={phase} columns={size.columns} />
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" paddingX={1} height={size.rows}>
       <Header state={state} audio={audioStatus} phase={phase} />
+      <SceneTabs scene={scene} />
 
-      <Box flexDirection="row" flexGrow={1}>
-        <Panel title="通信記録 / THREAD SPINE" accent={theme.orange} flexGrow={3}>
-          <Transcript
-            entries={state.transcript}
-            limit={transcriptLimit}
-            maxEntryChars={maxEntryChars}
-          />
-        </Panel>
-
-        {wide ? (
-          <Box flexDirection="column" flexGrow={1} width={38} marginLeft={1}>
-            <Panel title="同期率 / TELEMETRY" accent={theme.purple}>
-              <Telemetry state={state} />
-            </Panel>
-            <Panel title="作戦行動 / ACTIVITY" accent={theme.cyan}>
-              <Activity items={state.activity} />
-            </Panel>
-          </Box>
-        ) : null}
-      </Box>
-
-      {!wide ? (
-        <Panel title="同期・作戦 / COMPACT TELEMETRY" accent={theme.purple}>
-          <CompactTelemetry state={state} />
-        </Panel>
+      {scene === "operations" ? (
+        <OperationsScreen state={state} columns={size.columns} rows={size.rows} />
+      ) : null}
+      {scene === "stations" ? (
+        <StationsScreen
+          state={state}
+          audioStatus={audioStatus}
+          columns={size.columns}
+          rows={size.rows}
+          selectedIndex={stationSelection}
+        />
+      ) : null}
+      {scene === "impact" ? (
+        <ImpactScreen state={state} columns={size.columns} />
+      ) : null}
+      {scene === "transcript" ? (
+        <TranscriptScreen state={state} rows={size.rows} columns={size.columns} />
       ) : null}
 
-      {state.approval ? <Approval approval={state.approval} phase={phase} /> : null}
-
-      <Box borderStyle="single" borderColor={promptColor} paddingX={1}>
+      <Box borderStyle="single" borderColor={promptColor} paddingX={1} flexShrink={0}>
         <Text color={promptColor} bold>
           指令&gt;{" "}
         </Text>
@@ -318,14 +410,14 @@ export function App(props: AppProps) {
         <Text color={state.connection === "online" ? theme.orange : theme.dim}>▌</Text>
       </Box>
 
-      {wide ? (
+      {size.columns >= 96 ? (
         <Box>
-          <Box width="58%">
+          <Box width="66%">
             <Text color={theme.dim} wrap="truncate-end">
-              ENTER SEND  ^C INTERRUPT/EXIT  ^G AUDIO  ^Q QUIT  /music
+              TAB VIEWS  ↑↓ STATION  ENTER SEND  ^C INTERRUPT/EXIT  ^G AUDIO
             </Text>
           </Box>
-          <Box width="42%" justifyContent="flex-end">
+          <Box width="34%" justifyContent="flex-end">
             <Text color={state.diagnostic ? theme.red : theme.dim} wrap="truncate-start">
               {state.diagnostic || `THREAD ${state.threadId.slice(0, 8) || "--------"} · ${state.model}`}
             </Text>
@@ -335,7 +427,7 @@ export function App(props: AppProps) {
         <Text color={state.diagnostic ? theme.red : theme.dim} wrap="truncate-end">
           {state.diagnostic
             ? state.diagnostic
-            : "^C INTERRUPT/EXIT  ^G AUDIO  ^Q QUIT  /music"}
+            : "TAB VIEWS  ↑↓ STATION  ^C INTERRUPT/EXIT  ^G AUDIO  /help"}
         </Text>
       )}
     </Box>

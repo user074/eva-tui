@@ -89,10 +89,15 @@ Options:
 
 Controls:
   Enter              Send instruction
+  Tab / Shift-Tab    Cycle operational views
+  Up / Down          Inspect Station Matrix nodes
+  Escape             Return to Operations view / dismiss simulation
   Ctrl-C             Interrupt active turn; exit while idle
   Ctrl-G             Toggle audio
   Ctrl-Q             Exit
   /music             Toggle audio
+  /view <name>       Open operations, stations, impact, or transcript
+  /simulate <type>   Run a safe earthquake or tsunami UI simulation
 `);
 }
 

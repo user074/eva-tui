@@ -18,14 +18,22 @@ keyboard ──> EVA TUI (Ink/React) ──JSONL──> codex app-server ──>
                  └── optional local audio player
 ```
 
-## Version 0.2
+## Version 0.3
 
 - Starts a new Codex thread in the selected workspace.
 - Streams Codex responses into the thread spine.
+- Uses an operations-first command-center screen instead of making chat the
+  primary canvas.
+- Provides Operations, Stations, Impact, and Transcript scenes.
+- Renders MCP servers, shell commands, git, workspace changes, tool calls,
+  agents, and audio as a rib-cage Station Matrix derived from recorded state.
+- Retains affected filenames from Codex diff events and visualizes them as a
+  change-propagation field.
 - Shows actual plan completion, context use, diff statistics, MCP readiness,
   and command/tool/file activity.
-- Renders command, file-change, and permission requests as a red `警告`
-  approval console.
+- Renders approvals and failed turns as full-screen `警告` incident consoles.
+- Includes explicitly labeled, non-mutating earthquake and tsunami visual
+  simulations.
 - Accepts, session-accepts, declines, or cancels approval requests.
 - Interrupts the active Codex turn.
 - Adapts between wide two-column and narrow stacked layouts.
@@ -83,6 +91,9 @@ Audio can be toggled at any time with `Ctrl-G` or by entering `/music`.
 | Key | Action |
 | --- | --- |
 | `Enter` | Send the composer text to Codex |
+| `Tab` / `Shift-Tab` | Cycle Operations, Stations, Impact, and Transcript |
+| `Up` / `Down` | Select and inspect a Station Matrix node |
+| `Escape` | Return to Operations or dismiss a simulation |
 | `Ctrl-C` | Interrupt an active turn; exit while idle |
 | `Ctrl-G` | Toggle audio |
 | `Ctrl-Q` | Exit |
@@ -91,7 +102,18 @@ Audio can be toggled at any time with `Ctrl-G` or by entering `/music`.
 | `N` | Decline |
 | `Escape` | Deny and cancel the turn |
 
-Slash commands: `/music`, `/interrupt`, and `/quit`.
+Slash commands:
+
+- `/view operations`
+- `/view stations`
+- `/view impact`
+- `/view transcript`
+- `/simulate earthquake` or `/eq`
+- `/simulate tsunami` or `/tsunami`
+- `/music`, `/interrupt`, `/help`, and `/quit`
+
+Simulation screens are fixture-driven and always marked
+`試験 / SIMULATION`. They do not start a Codex turn or modify the workspace.
 
 ## Music and visual references
 
@@ -133,7 +155,7 @@ authentication, sandboxing, tools, and model behavior. Protocol handling is
 isolated in `src/codex`, so a future Codex protocol change can be adapted
 without rewriting the UI.
 
-The app-server surface is still evolving. Version 0.1 deliberately supports
+The app-server surface is still evolving. Version 0.3 deliberately supports
 the core thread/turn path and approvals first. Rich `requestUserInput`, MCP
 elicitation forms, history/resume, and dynamic client-hosted tools are planned
 follow-ups; unsupported server requests receive a clear protocol error rather
