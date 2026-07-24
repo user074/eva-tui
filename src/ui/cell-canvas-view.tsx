@@ -3,14 +3,14 @@ import { Box, Text } from "ink";
 
 import type { CanvasFrame } from "./cell-canvas.js";
 
-function foreground(color: string | null): string {
-  if (!color) return "\u001b[39m";
+function ansiColor(color: string | null, layer: 38 | 48): string {
+  if (!color) return `\u001b[${layer === 38 ? 39 : 49}m`;
   const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(color);
-  if (!match) return "\u001b[39m";
+  if (!match) return `\u001b[${layer === 38 ? 39 : 49}m`;
   const red = Number.parseInt(match[1] ?? "ff", 16);
   const green = Number.parseInt(match[2] ?? "ff", 16);
   const blue = Number.parseInt(match[3] ?? "ff", 16);
-  return `\u001b[38;2;${red};${green};${blue}m`;
+  return `\u001b[${layer};2;${red};${green};${blue}m`;
 }
 
 export function frameToAnsi(frame: CanvasFrame): string {
@@ -18,14 +18,19 @@ export function frameToAnsi(frame: CanvasFrame): string {
     .map((row) => {
       let output = "";
       let currentColor: string | null = null;
+      let currentBackground: string | null = null;
       for (const cell of row) {
         if (cell.color !== currentColor) {
-          output += foreground(cell.color);
+          output += ansiColor(cell.color, 38);
           currentColor = cell.color;
+        }
+        if (cell.background !== currentBackground) {
+          output += ansiColor(cell.background, 48);
+          currentBackground = cell.background;
         }
         output += cell.char;
       }
-      return `${output}\u001b[39m`;
+      return `${output}\u001b[39;49m`;
     })
     .join("\n");
 }

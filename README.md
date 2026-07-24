@@ -154,9 +154,13 @@ Unicode placeholder cells. Automatic mode stays on text inside tmux because
 Kitty passthrough must be enabled explicitly; after configuring tmux
 passthrough, request Kitty mode.
 
-The fallback treats each terminal cell as a 2×4 drawing surface using Unicode
-Braille dots. At 100×30 cells, scenes use an effective 200×120 terminal-pixel
-buffer with true-color layers, clipped lines, circles, and filled polygons.
+The portable fallback rasterizes the same reference-grounded SVG compositions
+and imported warning assets used by Tier 3, then encodes each 2×2 pixel tile as
+a true-color Unicode quadrant cell. This preserves the real scene organization,
+typography, asset silhouettes, and color fields in Apple Terminal without
+requiring a terminal graphics protocol. If SVG rasterization fails, a secondary
+hybrid cell-canvas fallback retains Braille for fine lines and full or half
+blocks for filled panels.
 
 ## Music and visual references
 

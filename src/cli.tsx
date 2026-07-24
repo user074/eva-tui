@@ -95,7 +95,7 @@ Options:
   --codex <path>     Codex binary to launch (default: codex)
   --music <path>     User-supplied audio file; never copied into the project
   --youtube <url>    Official YouTube companion-player URL
-  --graphics <mode>  auto, kitty (Tier 3), or text (default: auto)
+  --graphics <mode>  auto, kitty (Tier 3), or text (ANSI raster; default: auto)
   --audio            Start audio immediately (off by default)
   -h, --help         Show this help
 

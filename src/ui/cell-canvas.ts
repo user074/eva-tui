@@ -6,6 +6,7 @@ export interface Point {
 export interface CanvasCell {
   char: string;
   color: string | null;
+  background: string | null;
 }
 
 export type CanvasFrame = CanvasCell[][];
@@ -184,17 +185,58 @@ export class CellCanvas {
       for (let cellX = 0; cellX < this.columns; cellX += 1) {
         let bits = 0;
         let newest: Pixel | null = null;
+        const top: Pixel[] = [];
+        const bottom: Pixel[] = [];
         for (let dotY = 0; dotY < 4; dotY += 1) {
           for (let dotX = 0; dotX < 2; dotX += 1) {
             const pixel = this.pixelAt(cellX * 2 + dotX, cellY * 4 + dotY);
             if (!pixel) continue;
             bits |= BRAILLE_BITS[dotY]?.[dotX] ?? 0;
             if (!newest || pixel.order > newest.order) newest = pixel;
+            (dotY < 2 ? top : bottom).push(pixel);
+          }
+        }
+        const density = top.length + bottom.length;
+        if (density >= 5) {
+          const topColor = this.dominantColor(top);
+          const bottomColor = this.dominantColor(bottom);
+          if (topColor && bottomColor && topColor === bottomColor) {
+            row.push({
+              char: "█",
+              color: topColor,
+              background: null,
+            });
+            continue;
+          }
+          if (topColor && bottomColor) {
+            row.push({
+              char: "▀",
+              color: topColor,
+              background: bottomColor,
+            });
+            continue;
+          }
+          if (topColor) {
+            row.push({
+              char: "▀",
+              color: topColor,
+              background: null,
+            });
+            continue;
+          }
+          if (bottomColor) {
+            row.push({
+              char: "▄",
+              color: bottomColor,
+              background: null,
+            });
+            continue;
           }
         }
         row.push({
           char: bits === 0 ? " " : String.fromCodePoint(0x2800 + bits),
           color: newest?.color ?? null,
+          background: null,
         });
       }
       frame.push(row);
@@ -210,6 +252,25 @@ export class CellCanvas {
 
   private pixelAt(x: number, y: number): Pixel | null {
     return this.pixels[y * this.pixelWidth + x] ?? null;
+  }
+
+  private dominantColor(pixels: Pixel[]): string | null {
+    if (pixels.length === 0) return null;
+    const colors = new Map<string, { count: number; newest: number }>();
+    for (const pixel of pixels) {
+      const current = colors.get(pixel.color);
+      colors.set(pixel.color, {
+        count: (current?.count ?? 0) + 1,
+        newest: Math.max(current?.newest ?? 0, pixel.order),
+      });
+    }
+    return (
+      [...colors.entries()].sort(
+        (left, right) =>
+          right[1].count - left[1].count ||
+          right[1].newest - left[1].newest,
+      )[0]?.[0] ?? null
+    );
   }
 
   private brush(x: number, y: number, color: string, thickness: number): void {

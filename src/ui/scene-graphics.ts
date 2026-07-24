@@ -3,6 +3,40 @@ import { CellCanvas } from "./cell-canvas.js";
 import type { Station } from "./operations-model.js";
 import { statusColor, theme } from "./theme.js";
 
+function stampText(
+  frame: CanvasFrame,
+  x: number,
+  y: number,
+  text: string,
+  color: string,
+  background: string | null = null,
+): void {
+  const row = frame[Math.max(0, Math.min(frame.length - 1, Math.round(y)))];
+  if (!row) return;
+  const characters = Array.from(text);
+  const start = Math.max(0, Math.round(x));
+  for (let index = 0; index < characters.length; index += 1) {
+    const column = start + index;
+    if (column >= row.length) break;
+    row[column] = {
+      char: characters[index] ?? " ",
+      color,
+      background,
+    };
+  }
+}
+
+function stampCentered(
+  frame: CanvasFrame,
+  y: number,
+  text: string,
+  color: string,
+  background: string | null = null,
+): void {
+  const width = frame[0]?.length ?? 0;
+  stampText(frame, Math.floor((width - text.length) / 2), y, text, color, background);
+}
+
 function hexagon(center: Point, radiusX: number, radiusY: number): Point[] {
   return Array.from({ length: 6 }, (_, index) => {
     const angle = (Math.PI / 3) * index;
@@ -112,7 +146,10 @@ export function earthquakeGraphic(
     );
   }
 
-  return canvas.toFrame();
+  const frame = canvas.toFrame();
+  stampCentered(frame, Math.max(1, Math.floor(rows * 0.3)), " EARTHQUAKE ", theme.black, pulse);
+  stampCentered(frame, Math.min(rows - 2, Math.floor(rows * 0.68)), "MAG 6.2 / TEST", theme.amber, theme.black);
+  return frame;
 }
 
 export function tsunamiGraphic(
@@ -199,7 +236,7 @@ export function tsunamiGraphic(
     { x: width * 0.1, y: height * 0.79 },
     { x: width * 0.9, y: height * 0.79 },
   ];
-  for (const placard of placards) {
+  for (const [index, placard] of placards.entries()) {
     canvas.rectangle(
       { x: placard.x - 4, y: placard.y - 6 },
       8,
@@ -221,7 +258,21 @@ export function tsunamiGraphic(
     );
   }
 
-  return canvas.toFrame();
+  const frame = canvas.toFrame();
+  stampCentered(frame, Math.max(1, Math.floor(rows * 0.2)), " TSUNAMI WARNING ", theme.black, theme.amber);
+  stampCentered(frame, Math.floor(rows * 0.5), "PACIFIC FIXTURE GRID", theme.white, theme.crimson);
+  stampCentered(frame, Math.min(rows - 2, Math.floor(rows * 0.66)), "06 MODULES / SIMULATION", theme.amber, theme.black);
+  placards.forEach((placard, index) => {
+    stampText(
+      frame,
+      Math.floor(placard.x / 2) - 1,
+      Math.floor(placard.y / 4),
+      String(index + 1).padStart(2, "0"),
+      theme.amber,
+      theme.black,
+    );
+  });
+  return frame;
 }
 
 export function stationGraphic(
@@ -235,6 +286,13 @@ export function stationGraphic(
   const branchCount = columns >= 100 && stations.length > 8 ? 3 : 2;
   const perBranch = Math.ceil(stations.length / branchCount);
   const pulse = 2 + (phase % 5);
+  const labels: Array<{
+    x: number;
+    y: number;
+    text: string;
+    color: string;
+    selected: boolean;
+  }> = [];
 
   for (let branch = 0; branch < branchCount; branch += 1) {
     const branchStations = stations.slice(
@@ -282,8 +340,26 @@ export function stationGraphic(
           theme.white,
         );
       }
+      labels.push({
+        x: node.x / 2 + (side < 0 ? -9 : 2),
+        y: node.y / 4,
+        text: station.label.toUpperCase().replaceAll(/\s+/g, "").slice(0, 7),
+        color,
+        selected,
+      });
     });
   }
 
-  return canvas.toFrame();
+  const frame = canvas.toFrame();
+  for (const label of labels) {
+    stampText(
+      frame,
+      label.x,
+      label.y,
+      label.selected ? `>${label.text}` : label.text,
+      label.selected ? theme.black : label.color,
+      label.selected ? theme.white : theme.black,
+    );
+  }
+  return frame;
 }

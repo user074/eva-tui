@@ -18,17 +18,32 @@ test("braille encoder maps a 2x4 pixel cell to the correct dot bits", () => {
   const cell = canvas.toFrame()[0]?.[0];
   assert.equal(cell?.char.codePointAt(0), 0x2800 + 0x01 + 0x80);
   assert.equal(cell?.color, "#00ff00");
+  assert.equal(cell?.background, null);
 });
 
-test("ANSI renderer compacts a frame into one true-color text buffer", () => {
+test("ANSI renderer compacts foreground and background colors into one buffer", () => {
   const canvas = new CellCanvas(2, 1);
-  canvas.plot(0, 0, "#ff3b21");
-  canvas.plot(2, 0, "#2ee66b");
+  canvas.rectangle({ x: 0, y: 0 }, 2, 2, "#ff3b21", true);
+  canvas.rectangle({ x: 0, y: 2 }, 2, 2, "#2ee66b", true);
   const output = frameToAnsi(canvas.toFrame());
 
   assert.match(output, /\u001b\[38;2;255;59;33m/);
-  assert.match(output, /\u001b\[38;2;46;230;107m/);
-  assert.ok(output.endsWith("\u001b[39m"));
+  assert.match(output, /\u001b\[48;2;46;230;107m/);
+  assert.ok(output.endsWith("\u001b[39;49m"));
+});
+
+test("hybrid canvas uses solid and half-block cells for dense color fields", () => {
+  const solid = new CellCanvas(1, 1);
+  solid.rectangle({ x: 0, y: 0 }, 2, 4, "#ff3b21", true);
+  assert.equal(solid.toFrame()[0]?.[0]?.char, "█");
+
+  const split = new CellCanvas(1, 1);
+  split.rectangle({ x: 0, y: 0 }, 2, 2, "#ff3b21", true);
+  split.rectangle({ x: 0, y: 2 }, 2, 2, "#2ee66b", true);
+  const splitCell = split.toFrame()[0]?.[0];
+  assert.equal(splitCell?.char, "▀");
+  assert.equal(splitCell?.color, "#ff3b21");
+  assert.equal(splitCell?.background, "#2ee66b");
 });
 
 test("drawing primitives clip safely and fill polygon interiors", () => {

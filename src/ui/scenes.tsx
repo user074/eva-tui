@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 
 import type { GraphicsBackend } from "../graphics/kitty.js";
 import type { AppState, PendingApproval, PlanStep } from "../state/model.js";
+import { AnsiGraphicView } from "./ansi-graphic-view.js";
 import { CellCanvasView } from "./cell-canvas-view.js";
 import { Panel, Transcript } from "./components.js";
 import {
@@ -307,10 +308,7 @@ export function StationsScreen({
     ),
   ).length;
   const canvasColumns = Math.max(24, columns - 6);
-  const canvasRows =
-    graphicsBackend === "kitty"
-      ? Math.max(8, Math.min(24, rows - 12))
-      : Math.max(5, Math.min(13, rows - 14));
+  const canvasRows = Math.max(8, Math.min(24, rows - 12));
   const frame = stationGraphic(
     stations,
     normalizedSelection,
@@ -323,7 +321,7 @@ export function StationsScreen({
     <Box flexDirection="column" flexGrow={1}>
       <Box borderStyle="double" borderColor={theme.orange} paddingX={1} justifyContent="space-between">
         <Text color={theme.orange} bold>
-          観測所網 / {graphicsBackend === "kitty" ? "TIER 3 RIB MATRIX" : "BRAILLE STATION MATRIX"}
+          観測所網 / {graphicsBackend === "kitty" ? "TIER 3 RIB MATRIX" : "HYBRID ANSI STATION MATRIX"}
         </Text>
         <Text color={ready === stations.length ? theme.green : theme.amber} bold>
           {ready.toString().padStart(2, "0")} / {stations.length.toString().padStart(2, "0")} NOMINAL
@@ -341,7 +339,14 @@ export function StationsScreen({
             fallback={<CellCanvasView frame={frame} />}
           />
         ) : (
-          <CellCanvasView frame={frame} />
+          <AnsiGraphicView
+            scene="stations"
+            columns={canvasColumns}
+            rows={canvasRows}
+            stations={stations}
+            selectedIndex={normalizedSelection}
+            fallback={<CellCanvasView frame={frame} />}
+          />
         )}
       </Box>
       {selected ? (
@@ -569,16 +574,16 @@ export function EarthquakeOverlay({
     rows < 28 ? 5 : 8,
     phase,
   );
-  if (graphicsBackend === "kitty") {
-    const graphicColumns = Math.max(24, columns - 2);
-    const graphicRows = Math.max(8, rows - 3);
-    return (
-      <Box flexDirection="column" height={rows} justifyContent="space-between">
-        <Text backgroundColor={simulation ? theme.amber : theme.red} color={theme.black} bold>
-          {simulation
-            ? " 試験 / SIMULATION — NO WORKSPACE ACTION "
-            : " 警告 / OPERATION FAILURE DETECTED "}
-        </Text>
+  const graphicColumns = Math.max(24, columns - 2);
+  const graphicRows = Math.max(8, rows - 3);
+  return (
+    <Box flexDirection="column" height={rows} justifyContent="space-between">
+      <Text backgroundColor={simulation ? theme.amber : theme.red} color={theme.black} bold>
+        {simulation
+          ? " 試験 / SIMULATION — NO WORKSPACE ACTION "
+          : " 警告 / OPERATION FAILURE DETECTED "}
+      </Text>
+      {graphicsBackend === "kitty" ? (
         <TerminalGraphicView
           scene="earthquake"
           columns={graphicColumns}
@@ -591,43 +596,24 @@ export function EarthquakeOverlay({
           simulation={simulation}
           fallback={<CellCanvasView frame={graphic} />}
         />
-        <Text color={theme.dim}>[ESC/X] DISMISS · KITTY GPU LAYER · INCIDENT INPUT LOCKED</Text>
-      </Box>
-    );
-  }
-  return (
-    <AlertFrame
-      title="警 告 / EARTHQUAKE"
-      subtitle={simulation ? "LOCAL INCIDENT TEST" : "OPERATION FAILURE DETECTED"}
-      phase={phase}
-      columns={columns}
-      simulation={simulation}
-      footer="[ESC/X] DISMISS   [TAB] LOCKED DURING INCIDENT"
-    >
-      <Box flexDirection="column" alignItems="center">
-        <CellCanvasView frame={graphic} />
-        <Box>
-          <Box borderStyle="double" borderColor={theme.red} paddingX={2} flexDirection="column" alignItems="center">
-            <Text color={theme.dim}>{simulation ? "MAGNITUDE" : "TURN STATUS"}</Text>
-            <Text color={theme.red} bold>{simulation ? "6.2" : "FAILED"}</Text>
-          </Box>
-          <Box marginLeft={2} borderStyle="double" borderColor={theme.amber} paddingX={2} flexDirection="column" alignItems="center">
-            <Text color={theme.dim}>{simulation ? "DEPTH" : "FAILED TOOL"}</Text>
-            <Text color={theme.amber} bold>{simulation ? "03 LEVELS" : shortLabel(failed?.type.toUpperCase() ?? "CODEX", 18)}</Text>
-          </Box>
-        </Box>
-        <Text color={theme.red}>
-          {simulation
-            ? "TEST SIGNAL  ▁▂▃▅▇█▅▂▁▃█▇▃▁"
-            : `EVENT SIGNAL ${activityTrace(state.activity, 20)}`}
-        </Text>
-        <Text color={theme.white} wrap="wrap">
-          {simulation
-            ? "Fixture command failure detected in the simulated execution layer."
-            : state.diagnostic || failed?.label || "The active turn ended in a failed state."}
-        </Text>
-      </Box>
-    </AlertFrame>
+      ) : (
+        <AnsiGraphicView
+          scene="earthquake"
+          columns={graphicColumns}
+          rows={graphicRows}
+          incidentDetail={
+            simulation
+              ? "Fixture command failure detected in the simulated execution layer."
+              : state.diagnostic || failed?.label || "The active turn ended in a failed state."
+          }
+          simulation={simulation}
+          fallback={<CellCanvasView frame={graphic} />}
+        />
+      )}
+      <Text color={theme.dim}>
+        [ESC/X] DISMISS · {graphicsBackend === "kitty" ? "KITTY GPU" : "ANSI QUADRANT"} LAYER · INCIDENT INPUT LOCKED
+      </Text>
+    </Box>
   );
 }
 
@@ -647,37 +633,31 @@ export function TsunamiOverlay({
     rows < 28 ? 8 : 12,
     phase,
   );
-  if (graphicsBackend === "kitty") {
-    const graphicColumns = Math.max(24, columns - 2);
-    const graphicRows = Math.max(8, rows - 3);
-    return (
-      <Box flexDirection="column" height={rows} justifyContent="space-between">
-        <Text backgroundColor={theme.amber} color={theme.black} bold>
-          {" 試験 / SIMULATION — NO WORKSPACE ACTION "}
-        </Text>
+  const graphicColumns = Math.max(24, columns - 2);
+  const graphicRows = Math.max(8, rows - 3);
+  return (
+    <Box flexDirection="column" height={rows} justifyContent="space-between">
+      <Text backgroundColor={theme.amber} color={theme.black} bold>
+        {" 試験 / SIMULATION — NO WORKSPACE ACTION "}
+      </Text>
+      {graphicsBackend === "kitty" ? (
         <TerminalGraphicView
           scene="tsunami"
           columns={graphicColumns}
           rows={graphicRows}
           fallback={<CellCanvasView frame={graphic} />}
         />
-        <Text color={theme.dim}>[ESC/X] DISMISS · KITTY GPU LAYER · FIXTURE NODES ONLY</Text>
-      </Box>
-    );
-  }
-  return (
-    <AlertFrame
-      title="津 波 / TSUNAMI ALERT"
-      subtitle="CHANGE PROPAGATION TEST"
-      phase={phase}
-      columns={columns}
-      simulation
-      footer="[ESC/X] DISMISS   TEST NODES ARE FIXTURES"
-    >
-      <Box flexDirection="column" alignItems="center">
-        <CellCanvasView frame={graphic} />
-        <Text color={theme.red}>POTENTIAL PROPAGATION · 06 FIXTURE WARNING MODULES</Text>
-      </Box>
-    </AlertFrame>
+      ) : (
+        <AnsiGraphicView
+          scene="tsunami"
+          columns={graphicColumns}
+          rows={graphicRows}
+          fallback={<CellCanvasView frame={graphic} />}
+        />
+      )}
+      <Text color={theme.dim}>
+        [ESC/X] DISMISS · {graphicsBackend === "kitty" ? "KITTY GPU" : "ANSI QUADRANT"} LAYER · FIXTURE NODES ONLY
+      </Text>
+    </Box>
   );
 }
