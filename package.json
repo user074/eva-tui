@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsx scripts/clean-dist.ts && tsc -p tsconfig.json",
     "dev": "tsx src/cli.tsx",
-    "dev:ratatui": "cargo run --manifest-path crates/eva-ratatui/Cargo.toml --",
+    "dev:ratatui": "node scripts/run-ratatui.mjs",
     "preview:tui": "tsx scripts/render-tui-previews.ts",
     "start": "node dist/cli.js",
     "test": "tsx --test test/*.test.ts",

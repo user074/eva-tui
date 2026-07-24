@@ -2,14 +2,16 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Modifier, Style},
+    widgets::Widget,
     Frame,
 };
 
 use crate::{
     app::App,
+    cell_widgets::StationBlock,
     drawing::{
-        centered_text, draw_sharp_station_blade, fill_background, footer_style, horizontal_rule,
-        label_style, put_symbol, put_text, vertical_rule,
+        centered_text, fill_background, footer_style, horizontal_rule, label_style, put_symbol,
+        put_text, vertical_rule, STATION_ACCENT_WIDTH_RATIO,
     },
     palette::{AMBER, BLACK, CRIMSON, DIM, GREEN, ORANGE, WHITE},
 };
@@ -205,10 +207,10 @@ fn draw_station_node(buffer: &mut Buffer, node: StationNode) {
         1_i8
     };
     let half_lane = node.lane_width / 2;
-    let blade_width = half_lane.saturating_sub(2).clamp(6, 9);
-    let arm = half_lane.saturating_sub(blade_width).max(2);
-    let blade_x = if side < 0 {
-        node.spine_x.saturating_sub(arm + blade_width)
+    let block_width = half_lane.saturating_sub(2).clamp(6, 9);
+    let arm = half_lane.saturating_sub(block_width).max(2);
+    let block_x = if side < 0 {
+        node.spine_x.saturating_sub(arm + block_width)
     } else {
         node.spine_x + arm
     };
@@ -219,7 +221,7 @@ fn draw_station_node(buffer: &mut Buffer, node: StationNode) {
     };
 
     if side < 0 {
-        let connector_x = blade_x + blade_width - 1;
+        let connector_x = block_x + block_width - 1;
         horizontal_rule(
             buffer,
             connector_x,
@@ -240,13 +242,13 @@ fn draw_station_node(buffer: &mut Buffer, node: StationNode) {
             buffer,
             node.spine_x + 1,
             node.y,
-            blade_x.saturating_sub(node.spine_x),
+            block_x.saturating_sub(node.spine_x),
             "━",
             marker_tone,
         );
         put_symbol(
             buffer,
-            blade_x,
+            block_x,
             node.y,
             if node.selected { "◆" } else { "◇" },
             label_style(marker_tone),
@@ -266,12 +268,15 @@ fn draw_station_node(buffer: &mut Buffer, node: StationNode) {
         label_style(marker_tone),
     );
 
-    draw_sharp_station_blade(
-        buffer,
-        Rect::new(blade_x, node.y.saturating_sub(1), blade_width, 1),
+    StationBlock::new(
         side,
         node.station.tone,
         if node.selected { WHITE } else { AMBER },
+        STATION_ACCENT_WIDTH_RATIO,
+    )
+    .render(
+        Rect::new(block_x, node.y.saturating_sub(1), block_width, 2),
+        buffer,
     );
 
     let available = half_lane.max(5);

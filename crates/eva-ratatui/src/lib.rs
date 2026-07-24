@@ -1,4 +1,5 @@
 pub mod app;
+pub mod cell_widgets;
 pub mod drawing;
 pub mod palette;
 pub mod scenes;
@@ -143,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn station_screen_is_selectable_and_uses_sharp_skew_masks() {
+    fn station_screen_is_selectable_and_uses_filled_rectangular_nodes() {
         let mut app = app::App::default();
         app.scene = app::Scene::Stations;
         app.selected_station = 4;
@@ -152,7 +153,7 @@ mod tests {
         assert!(text.contains("RIB-01"));
         assert!(text.contains("TOOL BUS"));
         assert!(text.contains("SELECTED 05/12"));
-        assert!(buffer
+        assert!(!buffer
             .content()
             .iter()
             .any(|cell| { matches!(cell.symbol(), "◤" | "◥" | "◣" | "◢") }));
@@ -162,10 +163,14 @@ mod tests {
                 "▘" | "▝" | "▖" | "▗" | "▞" | "▚" | "▛" | "▜" | "▙" | "▟"
             )
         }));
-        assert!(buffer
-            .content()
-            .iter()
-            .any(|cell| cell.bg == Color::Rgb(46, 230, 107)));
+        assert!(
+            buffer
+                .content()
+                .iter()
+                .filter(|cell| cell.bg == Color::Rgb(46, 230, 107))
+                .count()
+                > 40
+        );
     }
 
     #[test]

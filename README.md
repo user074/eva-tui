@@ -237,10 +237,12 @@ previews.
 ## Ratatui prototype
 
 An isolated Rust/Ratatui renderer now provides a higher-fidelity native TUI
-experiment without replacing `eva --tui`. It ports the checked-in upstream SVG
-proportions into hard cell-native fills, stepped spans, and inverted diagonal
-cutout masks, while reserving Braille for animated synchronization signals.
-The first functional screens are Earthquake and Stations.
+experiment without replacing `eva --tui`. Its active screens use large,
+gapless background-filled alert plates and rectangular station blocks, while
+retaining the checked-in reference assets' color hierarchy and mechanical
+panel rhythm. Diagonal glyphs remain limited to small warning motifs, while
+Braille is reserved for animated synchronization signals. The first functional
+screens are Earthquake and Stations.
 
 After installing Rust, run:
 

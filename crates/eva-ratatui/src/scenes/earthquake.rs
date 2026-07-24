@@ -3,16 +3,19 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     symbols::Marker,
-    widgets::canvas::{Canvas, Points},
+    widgets::{
+        canvas::{Canvas, Points},
+        Widget,
+    },
     Frame,
 };
 
 use crate::{
     app::App,
+    cell_widgets::FilledRectPanel,
     drawing::{
-        centered_text, dark_label_style, draw_dense_stripe, draw_hazard_rail, draw_sharp_data_hex,
-        draw_sharp_long_hex, draw_sharp_warning_hex, fill_background, footer_style,
-        horizontal_rule, label_style, outline_box, put_symbol, put_text,
+        centered_text, dark_label_style, draw_dense_stripe, draw_hazard_rail, fill_background,
+        footer_style, horizontal_rule, label_style, outline_box, put_symbol, put_text,
     },
     palette::{AMBER, BLACK, CYAN, DIM, ORANGE, RED, WHITE},
 };
@@ -23,7 +26,7 @@ pub fn render_earthquake(frame: &mut Frame, app: &App) {
     let header_width = area.width.min(58);
     let header_x = area.x + (area.width - header_width) / 2;
     let header = Rect::new(header_x, area.y + 3, header_width, 6);
-    let side_hex_width = 13;
+    let side_panel_width = 13;
     let show_sides = area.width >= 92;
     let module_width = if area.width >= 100 { 16 } else { 14 };
     let module_gap = 1;
@@ -62,22 +65,27 @@ pub fn render_earthquake(frame: &mut Frame, app: &App) {
             true,
         );
 
-        draw_sharp_long_hex(buffer, header, RED);
+        FilledRectPanel::new(RED, BLACK)
+            .rail_inset(5)
+            .render(header, buffer);
         if show_sides {
-            draw_sharp_warning_hex(
-                buffer,
+            FilledRectPanel::new(AMBER, BLACK).rail_inset(2).render(
                 Rect::new(
-                    header_x - side_hex_width - 3,
+                    header_x - side_panel_width - 3,
                     header.y,
-                    side_hex_width,
+                    side_panel_width,
                     header.height,
                 ),
-                RED,
-            );
-            draw_sharp_warning_hex(
                 buffer,
-                Rect::new(header.right() + 3, header.y, side_hex_width, header.height),
-                RED,
+            );
+            FilledRectPanel::new(AMBER, BLACK).rail_inset(2).render(
+                Rect::new(
+                    header.right() + 3,
+                    header.y,
+                    side_panel_width,
+                    header.height,
+                ),
+                buffer,
             );
         }
 
@@ -99,15 +107,15 @@ pub fn render_earthquake(frame: &mut Frame, app: &App) {
         );
         for index in 0..3 {
             let y = module_y + if index == 1 { 1 } else { 0 };
-            draw_sharp_data_hex(
-                buffer,
+            let tone = if index == 1 { AMBER } else { RED };
+            FilledRectPanel::new(tone, BLACK).rail_inset(2).render(
                 Rect::new(
                     group_x + index * (module_width + module_gap),
                     y,
                     module_width,
                     6,
                 ),
-                RED,
+                buffer,
             );
         }
 
@@ -161,16 +169,21 @@ pub fn render_earthquake(frame: &mut Frame, app: &App) {
 
     if show_sides {
         let left = Rect::new(
-            header_x - side_hex_width - 3,
+            header_x - side_panel_width - 3,
             header.y,
-            side_hex_width,
+            side_panel_width,
             header.height,
         );
-        let right = Rect::new(header.right() + 3, header.y, side_hex_width, header.height);
-        centered_text(buffer, left, left.y + 2, "WARNING", label_style(RED));
-        centered_text(buffer, left, left.y + 3, "▲", label_style(WHITE));
-        centered_text(buffer, right, right.y + 2, "WARNING", label_style(RED));
-        centered_text(buffer, right, right.y + 3, "▲", label_style(WHITE));
+        let right = Rect::new(
+            header.right() + 3,
+            header.y,
+            side_panel_width,
+            header.height,
+        );
+        centered_text(buffer, left, left.y + 2, "WARNING", dark_label_style());
+        centered_text(buffer, left, left.y + 3, "▲", dark_label_style());
+        centered_text(buffer, right, right.y + 2, "WARNING", dark_label_style());
+        centered_text(buffer, right, right.y + 3, "▲", dark_label_style());
     }
 
     let module_labels = [

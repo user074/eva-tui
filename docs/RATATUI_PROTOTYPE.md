@@ -8,15 +8,18 @@ a native frontend.
 ## What is implemented
 
 - An animated earthquake test screen with the original warning assembly:
-  ticker rails, a layered long warning chassis, side warning hexagons, three
-  linked data hexagons, alert placards, an incident dossier, and a Braille
+  ticker rails, a solid red incident plate, amber side warnings, three linked
+  red/amber data blocks, alert placards, an incident dossier, and a Braille
   synchronization scope.
 - An animated station matrix with multiple vertical ribs, alternating connected
-  station blades, selection, live/paused state, event counts, and responsive
+  rectangular status blocks, selection, live/paused state, event counts, and responsive
   three-, four-, or five-rib layouts.
-- A hybrid rendering model. Warning rails, hexagonal chassis, placards,
-  dossiers, and station blades use hard cell-native fills, stepped spans, and
-  inverted diagonal cutout masks. Braille is reserved for signals and traces.
+- A hybrid rendering model. Alert plates, status blocks, placards, and dossiers
+  use hard cell-native background fills. Diagonal glyphs remain limited to
+  compact warning motifs; Braille is reserved for signals and traces.
+- Reusable native `FilledRectPanel` and `StationBlock` widgets for the active
+  screens. Earlier polygon widgets remain available for comparison, but no
+  longer define the principal information containers.
 - An experimental 2×2 sub-cell polygon rasterizer remains available for future
   plots, but is deliberately not used for the large EVA chassis geometry:
   sampling those elements makes their silhouettes look soft in real fonts.
@@ -33,16 +36,18 @@ The geometry is derived from the attributed files already checked into
 
 | Terminal element | Source geometry retained |
 | --- | --- |
-| Long warning chassis | `long_shape.svg`: `146.257 / 1564` cap ratio and red/black/red layers |
-| Data and warning hexes | `hex_shape.svg`: `145.77 / 584` cap ratio and red/black/red layers |
-| Station blades | `SkewRectangle_*.svg`: `37.5414 / 500` skew |
-| Blade accent | `SkewRectangle_*.svg`: `168.5 / 500` width and `19 / 100` height |
+| Incident assembly | `long_shape.svg`: dominant red mass, inset black rails, and flanking warnings |
+| Data hierarchy | `hex_shape.svg`: repeated red modules with a contrasting central status module |
+| Station blocks | `SkewRectangle_*.svg`: alternating placement and connected spine rhythm |
+| Station accent | `SkewRectangle_*.svg`: `168.5 / 500` width ratio |
 | Warning rails | `strip.svg`: `26 / 59.213` bar-to-period ratio and matching shear |
 
-These ratios are translated into stepped terminal spans and hard cutout masks
-rather than approximated with generic ASCII outlines or sampled as tiny image
-pixels. Braille is used only where its dotted texture is useful: signals and
-traces.
+The active screens preserve the source hierarchy, rhythm, proportions, and
+color mass without copying the source polygon silhouettes. Every large colored
+surface is painted as terminal background cells, preventing font padding and
+line-height gaps. Thin black inset rails add mechanical structure without
+needing to meet a diagonal boundary. Braille is used only where its dotted
+texture is useful: signals and traces.
 
 ## Install Rust
 
@@ -54,6 +59,17 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 Open a new shell after installation.
+
+If Rust is installed but the current shell still reports `cargo: command not
+found`, load rustup's environment once:
+
+```sh
+source "$HOME/.cargo/env"
+```
+
+The `npm run dev:ratatui` launcher also checks rustup's default
+`~/.cargo/bin/cargo` location directly, so it works before `PATH` has been
+refreshed.
 
 ## Run
 
