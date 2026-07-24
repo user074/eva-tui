@@ -88,15 +88,17 @@ poster-sized typography inside normal operational screens.
 | Primitive | Terminal construction | Meaning |
 | --- | --- | --- |
 | Hazard rail | background color, `/` and `\`, repeated text | global alert scope |
-| Long hex | red fill, black inset seam, `╱╲`, real text | dominant event |
+| Long hex | red fill, black connecting seam, diagonal caps, real text | dominant event |
 | Data hex | filled color silhouette, label and value | measurement or coupled state |
 | Placard | rounded black chassis, amber caps, Kanji | distributed alert node |
 | Dossier | rounded box, tight `◢◤` / `◣◥` rails on all four edges, nested rows | actionable detail |
 | Warning field | repeated filled `WARNING` hex cells | spatial threat coverage |
-| Rib | `┃`, `┫`, `┣`, `━`, glyph-built two-row `▇` parallelogram | system topology |
+| Rib | `┃`, `┫`, `┣`, `━`, one-row filled skew blade | system topology |
 | Signal channel | label, animated `━─` span, target | propagation or progress |
 
-These primitives live in `src/ui/tui-primitives.ts`. Scenes compose them in
+These primitives live in `src/ui/tui-primitives.ts`. Asset proportions and
+their cell-native cap/span constructions live in
+`src/ui/asset-cell-masks.ts`. Scenes compose them in
 `src/ui/semantic-scenes.ts`; they should not draw arbitrary per-pixel art.
 
 ## Layout and density
@@ -163,15 +165,16 @@ changes line width. The frame should remain legible in a static screenshot and
 when terminal refresh is slow.
 
 Geometry runs as a bounded staged sequence and then settles. A new alert,
-turn, station view, or station selection restarts that sequence. Persistent
-warning motion is terminal-driven SGR blink on selected triangle, stripe, and
-signal glyphs; it performs no recurring Ink render. Terminals with blinking
-disabled retain the complete static composition.
+turn, station view, or station selection restarts that sequence. Active
+semantic scenes also maintain a low-frequency operational phase for rails and
+signals. That phase is owned by the scene leaf rather than the whole
+application, and Ink's incremental renderer discards unchanged lines.
+Terminal-driven SGR blink remains available for selected markers.
 
-Do not leave a full-screen styled frame on an infinite JavaScript timer: Ink
-retains expensive styled text measurements across repeated renders, and an
-unattended screen can eventually exhaust the Node process. Idle displays must
-have no application animation timer.
+Do not leave the full application on a 30–60 FPS JavaScript timer. Persistent
+motion should stay below a few frames per second, be scoped to the active
+scene, and change only a small number of rows. Idle Operations, Impact, and
+Transcript displays have no application animation timer.
 
 ## Functional binding
 
@@ -193,18 +196,25 @@ The scene meaning is shared, but the renderers are separate:
 
 ```text
 Codex state
-    ├── semantic TUI composition → ANSI true color + Unicode → every terminal
+    ├── source SVG geometry
+    │       └── semantic vector masks → ANSI + Unicode cells → every terminal
     └── SVG asset composition    → Kitty PNG placement       → capable terminals
 ```
 
-The portable renderer never rasterizes the Kitty SVG. This keeps Apple
-Terminal output sharp, searchable, accessible to terminal selection, and
-independent of pixel or font aspect ratios. Kitty assets may be richer, but
-both backends must preserve the same scene hierarchy and state labels.
+The portable renderer does not rasterize a complete SVG scene or screenshot.
+It takes the structural ratios from a small set of source polygon paths, then
+rebuilds each shape from terminal-native filled spans, inverted diagonal cap
+masks, and connecting box-drawing seams. Terminal cell aspect ratio determines whether a source
+element becomes one row or several; the 500×100 station blade, for example,
+is intentionally one cell row high. This keeps Apple Terminal output
+searchable and selectable while preserving the reference assets'
+silhouettes. Kitty assets may be richer, but both backends must preserve the
+same scene hierarchy and state labels.
 
 ## Anti-patterns
 
-- converting a screenshot or SVG into quadrant, half-block, or Braille pixels;
+- converting a complete screenshot or scene into quadrant, half-block, or
+  Braille pixels instead of porting a small functional shape;
 - using a literal wave to represent the tsunami scene;
 - adding a circular radar when the reference uses a tiled field or rib
   topology;
@@ -220,7 +230,7 @@ both backends must preserve the same scene hierarchy and state labels.
 Generate deterministic previews:
 
 ```sh
-pnpm preview:tui
+npm run preview:tui
 ```
 
 By default the script writes PNG and SVG previews to

@@ -3,6 +3,10 @@ import test from "node:test";
 
 import type { Station } from "../src/ui/operations-model.js";
 import {
+  drawAssetDataHex,
+  drawAssetSkewBlade,
+} from "../src/ui/asset-cell-masks.js";
+import {
   denseDiagonalStripe,
   drawHorizontalTriangle,
   drawVerticalTriangle,
@@ -132,6 +136,30 @@ test("filled triangle primitives compose across multiple terminal rows", () => {
   assert.match(output, /▶/);
 });
 
+test("reference SVG geometry maps to cell-native caps and filled spans", () => {
+  const frame = new TuiFrame(38, 9, { background: "#090807" });
+  drawAssetDataHex(frame, 1, 1, 24, 7, "#ff3b21");
+  drawAssetSkewBlade(frame, 27, 3, 10, 3, -1, "#2ee66b");
+  const cells = frame.rows().flatMap((row) => row);
+  const output = tuiFrameToText(frame);
+
+  assert.match(output, /[◤◥][━ ]+[◥◤]/);
+  assert.match(output, /[◣◢][━ ]+[◢◣]/);
+  assert.doesNotMatch(output, /[▖▗▘▝▚▞▙▛▜▟]/);
+  assert.ok(
+    cells.filter((cell) => cell.background === "#ff3b21").length > 60,
+    "the SVG-derived hex should retain a filled red surface",
+  );
+  assert.ok(
+    cells.some(
+      (cell) =>
+        cell.background === "#2ee66b" ||
+        (cell.color === "#2ee66b" && "◢◣◤◥".includes(cell.char)),
+    ),
+    "the SVG-derived station blade should retain its green skew surface",
+  );
+});
+
 test("earthquake composition preserves the upstream assembly semantics", () => {
   const frame = buildEarthquakeFrame({
     columns: 100,
@@ -207,10 +235,13 @@ test("station composition maps state to alternating connected rib nodes", () => 
   assert.match(output, /CODEX/);
   assert.match(output, /SHELL/);
   assert.match(output, /\[ACT 04\]/);
-  assert.match(output, /[◢◥]▇+[◤◣]/);
   assert.ok(
-    cells.some((cell) => cell.char === "▇" && cell.color === "#2ee66b"),
-    "nominal blades should use green scanline fills",
+    cells.some(
+      (cell) =>
+        cell.background === "#2ee66b" ||
+        (cell.color === "#2ee66b" && "◢◣◤◥".includes(cell.char)),
+    ),
+    "nominal blades should use filled green SVG-derived surfaces",
   );
   assert.ok(
     cells.some(
@@ -221,6 +252,29 @@ test("station composition maps state to alternating connected rib nodes", () => 
     ),
     "selected station should retain a terminal-driven marker",
   );
+});
+
+test("operational motion continues independently of the entrance phase", () => {
+  const early = tuiFrameToText(
+    buildTsunamiFrame({
+      columns: 100,
+      rows: 29,
+      phase: 24,
+      motionPhase: 1,
+    }),
+  );
+  const later = tuiFrameToText(
+    buildTsunamiFrame({
+      columns: 100,
+      rows: 29,
+      phase: 24,
+      motionPhase: 9,
+    }),
+  );
+
+  assert.match(early, /PROPAGATION/);
+  assert.match(later, /PROPAGATION/);
+  assert.notEqual(early, later);
 });
 
 test("semantic warning scenes retain hierarchy in a compact terminal", () => {

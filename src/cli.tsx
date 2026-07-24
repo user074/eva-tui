@@ -47,7 +47,7 @@ function parseArgs(argv: string[]): CliOptions {
   let codexBin: string | undefined;
   let musicPath = process.env.EVA_TUI_MUSIC;
   let youtubeUrl = process.env.EVA_TUI_YOUTUBE;
-  let graphicsMode = (process.env.EVA_TUI_GRAPHICS ?? "auto") as GraphicsMode;
+  let graphicsMode = (process.env.EVA_TUI_GRAPHICS ?? "text") as GraphicsMode;
   let audioOn = false;
   let help = false;
   let mode: "tui" | "visual" = "tui";
@@ -136,7 +136,7 @@ Options:
   --codex <path>     Codex binary to launch (default: codex)
   --music <path>     User-supplied audio file; never copied into the project
   --youtube <url>    Official YouTube companion-player URL
-  --graphics <mode>  auto, kitty (Tier 3), or text (semantic TUI; default: auto)
+  --graphics <mode>  text (default), auto, or kitty (optional image protocol)
   --audio            Start audio immediately (off by default)
   --port <number>    Visual console port (default: 4587; 0 selects a free port)
   --no-open          Do not open the visual console in the default browser
@@ -205,8 +205,10 @@ async function main(): Promise<void> {
       {...(options.youtubeUrl ? { youtubeUrl: options.youtubeUrl } : {})}
     />,
     {
-    exitOnCtrlC: false,
-    alternateScreen: true,
+      exitOnCtrlC: false,
+      alternateScreen: true,
+      incrementalRendering: true,
+      maxFps: 30,
     },
   );
   await instance.waitUntilExit();

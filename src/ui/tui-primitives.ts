@@ -4,6 +4,12 @@ import {
   truncateTuiText,
   tuiTextWidth,
 } from "./tui-frame.js";
+import {
+  drawAssetDataHex,
+  drawAssetLongHex,
+  drawAssetSkewBlade,
+  drawAssetWarningHex,
+} from "./asset-cell-masks.js";
 
 export interface PanelOptions {
   x: number;
@@ -122,35 +128,11 @@ function drawHorizontalHexSurface(
   fill: string,
   edge: string,
 ): void {
-  const capWidth = Math.min(3, Math.max(2, Math.floor(width / 5)));
-  frame.fill(
-    x + capWidth - 1,
-    y,
-    width - (capWidth - 1) * 2,
-    height,
-    " ",
-    { background: fill },
-  );
-  drawHorizontalTriangle(
-    frame,
-    x,
-    y,
-    capWidth,
-    height,
-    "left",
-    edge,
-    fill,
-  );
-  drawHorizontalTriangle(
-    frame,
-    x + width - capWidth,
-    y,
-    capWidth,
-    height,
-    "right",
-    edge,
-    fill,
-  );
+  if (fill === theme.black) {
+    drawAssetWarningHex(frame, x, y, width, height, edge);
+  } else {
+    drawAssetDataHex(frame, x, y, width, height, fill);
+  }
 }
 
 export function drawHazardRail(
@@ -199,17 +181,7 @@ export function drawLongHex(frame: TuiFrame, options: PanelOptions): void {
   const border = options.border ?? theme.amber;
   const text = options.text ?? theme.black;
 
-  drawHorizontalHexSurface(frame, x, y, width, height, fill, border);
-  const topInset = Math.min(2, middle);
-  const capWidth = Math.max(1, width - topInset * 2 - 2);
-  frame.hLine(x + topInset + 1, y, capWidth, "▄", {
-    color: theme.black,
-    background: fill,
-  });
-  frame.hLine(x + topInset + 1, y + height - 1, capWidth, "▀", {
-    color: theme.black,
-    background: fill,
-  });
+  drawAssetLongHex(frame, x, y, width, height, fill);
 
   if (options.tag && height >= 5) {
     frame.centeredText(
@@ -249,25 +221,23 @@ export function drawHexModule(frame: TuiFrame, options: PanelOptions): void {
   const middle = Math.floor(height / 2);
 
   drawHorizontalHexSurface(frame, x, y, width, height, fill, border);
-  if (fill !== theme.black) {
-    frame.hLine(x + 3, y, width - 6, "▄", {
-      color: theme.black,
-      background: fill,
-    });
-    frame.hLine(x + 3, y + height - 1, width - 6, "▀", {
-      color: theme.black,
-      background: fill,
-    });
-  }
 
   const title = truncateTuiText(options.title.toUpperCase(), width - 5);
-  frame.centeredText(y + Math.max(1, middle - 1), title, {
-    color: fill === theme.black ? border : text,
-    bold: true,
-  }, x, width);
+  const titleRow = height <= 5 ? middle : Math.max(1, middle - 1);
+  const subtitleRow = height <= 5 ? middle + 1 : middle;
+  frame.centeredText(
+    y + titleRow,
+    title,
+    {
+      color: fill === theme.black ? border : text,
+      bold: true,
+    },
+    x,
+    width,
+  );
   if (options.subtitle) {
     frame.centeredText(
-      y + middle,
+      y + subtitleRow,
       truncateTuiText(options.subtitle, width - 4),
       { color: text, bold: true },
       x,
@@ -439,22 +409,5 @@ export function drawParallelogram(
   accent = theme.orange,
 ): void {
   const w = Math.max(4, Math.floor(width));
-  const body = "▇".repeat(Math.max(1, w - 3));
-  const glyph = direction < 0 ? `◢${body}◤` : `◥${body}◣`;
-  const upperX = direction < 0 ? x + 1 : x;
-  const lowerX = direction < 0 ? x : x + 1;
-  frame.text(upperX, y, glyph, {
-    color: tone,
-    bold: true,
-  });
-  frame.text(lowerX, y + 1, glyph, {
-    color: tone,
-    bold: true,
-  });
-
-  const capWidth = Math.max(1, Math.min(body.length, Math.floor(w / 3)));
-  frame.text(upperX + 1, y, "▇".repeat(capWidth), {
-    color: accent,
-    bold: true,
-  });
+  drawAssetSkewBlade(frame, x, y, w, 2, direction, tone, accent);
 }

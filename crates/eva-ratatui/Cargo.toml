@@ -1,0 +1,12 @@
+[package]
+name = "eva-ratatui"
+version = "0.1.0"
+edition = "2021"
+description = "Isolated Ratatui rendering prototype for EVA"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+crossterm = "0.28"
+ratatui = { version = "0.29", features = ["all-widgets"] }
+unicode-width = "0.2"

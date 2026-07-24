@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { GraphicScene } from "../graphics/compositions.js";
 import type { AppState } from "../state/model.js";
@@ -31,21 +31,37 @@ export function SemanticGraphicView({
   simulation?: boolean;
   state?: AppState;
 }): ReactNode {
+  const [motionPhase, setMotionPhase] = useState(0);
+
+  // Keep operational movement local to the scene leaf. This avoids rerendering
+  // the full application and lets memoized TuiFrame rows discard unchanged
+  // output. The low cadence remains legible without driving an idle 30–60 FPS
+  // loop.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setMotionPhase((current) => (current + 1) % 10_000);
+    }, 480);
+    timer.unref();
+    return () => clearInterval(timer);
+  }, [scene]);
+
   const frame =
     scene === "earthquake"
       ? buildEarthquakeFrame({
           columns,
           rows,
           phase,
+          motionPhase,
           incidentDetail,
           simulation,
         })
       : scene === "tsunami"
-        ? buildTsunamiFrame({ columns, rows, phase, state })
+        ? buildTsunamiFrame({ columns, rows, phase, motionPhase, state })
         : buildStationFrame({
             columns,
             rows,
             phase,
+            motionPhase,
             stations,
             selectedIndex,
           });

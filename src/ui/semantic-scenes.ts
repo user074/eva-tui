@@ -67,7 +67,7 @@ function drawEarthquakeSummary(
   const tone = options.simulation ? theme.amber : theme.red;
   const label = options.simulation ? "TEST INCIDENT DOSSIER" : "FAILURE DOSSIER";
   const motionPhase = options.motionPhase ?? options.phase;
-  if (frame.height >= 27 && y + 8 <= frame.height - 3) {
+  if (frame.height >= 27 && y + 8 <= frame.height - 2) {
     const width = Math.min(70, frame.width - 24);
     const x = Math.floor((frame.width - width) / 2);
     const inner = drawDossier(frame, {
@@ -118,27 +118,30 @@ export function buildEarthquakeFrame(
   const frame = new TuiFrame(options.columns, options.rows, {
     background: theme.black,
   });
-  const tone = pulseTone(options.phase);
+  const motionPhase = options.motionPhase ?? options.phase;
+  const tone = pulseTone(motionPhase);
   const compact = frame.width < 82 || frame.height < 25;
-  drawHazardRail(frame, 0, "EARTHQUAKE // 地震", options.phase, theme.orange);
+  const spacious = !compact && frame.height >= 27;
+  drawHazardRail(frame, 0, "EARTHQUAKE // 地震", motionPhase, theme.orange);
   drawHazardRail(
     frame,
     frame.height - 2,
     "EARTHQUAKE // 地震",
-    options.phase + 4,
+    motionPhase + 4,
     theme.orange,
     true,
   );
 
-  const headerY = Math.min(frame.height - 8, compact ? 4 : 4);
+  const headerY = 3;
+  const headerHeight = 6;
   const sideReserve = compact ? 4 : 34;
-  const headerWidth = Math.min(58, Math.max(32, frame.width - sideReserve));
+  const headerWidth = Math.min(46, Math.max(32, frame.width - sideReserve));
   const headerX = Math.floor((frame.width - headerWidth) / 2);
   drawLongHex(frame, {
     x: headerX,
     y: headerY,
     width: headerWidth,
-    height: 5,
+    height: headerHeight,
     tag: options.simulation ? "TEST EVENT / 試験" : "SYSTEM EVENT / 緊急",
     title: "WARNING / GEMPA BUMI",
     subtitle: "EARTHQUAKE DETECTED",
@@ -153,6 +156,7 @@ export function buildEarthquakeFrame(
       x: headerX - warningWidth - 2,
       y: headerY,
       width: warningWidth,
+      height: headerHeight,
       title: "WARNING",
       subtitle: "▲",
       border: theme.red,
@@ -162,6 +166,7 @@ export function buildEarthquakeFrame(
       x: headerX + headerWidth + 2,
       y: headerY,
       width: warningWidth,
+      height: headerHeight,
       title: "WARNING",
       subtitle: "▲",
       border: theme.red,
@@ -169,17 +174,18 @@ export function buildEarthquakeFrame(
     });
   }
 
-  const dataY = compact ? 9 : 12;
+  const dataY = compact ? 9 : 11;
+  const moduleHeight = 6;
   const sidePlacardWidth = compact ? 0 : 12;
   const groupAvailable = frame.width - (compact ? 4 : sidePlacardWidth * 2 + 8);
   const gap = 1;
   const moduleWidth = Math.max(
     12,
-    Math.min(20, Math.floor((groupAvailable - gap * 2) / 3)),
+    Math.min(spacious ? 15 : 14, Math.floor((groupAvailable - gap * 2) / 3)),
   );
   const groupWidth = moduleWidth * 3 + gap * 2;
   const groupX = Math.floor((frame.width - groupWidth) / 2);
-  const connectorY = dataY + 2;
+  const connectorY = dataY + Math.floor(moduleHeight / 2);
 
   frame.hLine(groupX + moduleWidth - 1, connectorY, gap + 2, "━", {
     color: theme.orange,
@@ -194,7 +200,7 @@ export function buildEarthquakeFrame(
   frame.vLine(
     groupX + moduleWidth + gap + Math.floor(moduleWidth / 2),
     connectorY,
-    3,
+    Math.max(2, Math.floor(moduleHeight / 2)),
     "┃",
     { color: theme.red },
   );
@@ -203,7 +209,7 @@ export function buildEarthquakeFrame(
     x: groupX,
     y: dataY,
     width: moduleWidth,
-    height: 5,
+    height: moduleHeight,
     title: "MAGNITUDE",
     subtitle: options.simulation ? "6.2 TEST" : "FAILURE",
     border: theme.red,
@@ -212,9 +218,9 @@ export function buildEarthquakeFrame(
   });
   drawHexModule(frame, {
     x: groupX + moduleWidth + gap,
-    y: dataY + 2,
+    y: dataY + 1,
     width: moduleWidth,
-    height: 5,
+    height: moduleHeight,
     title: "SYNC LINK",
     subtitle: options.simulation ? "FIXTURE" : "LOCKED",
     border: theme.red,
@@ -225,7 +231,7 @@ export function buildEarthquakeFrame(
     x: groupX + (moduleWidth + gap) * 2,
     y: dataY,
     width: moduleWidth,
-    height: 5,
+    height: moduleHeight,
     title: "DEPTH",
     subtitle: options.simulation ? "10 KM" : "TURN CORE",
     border: theme.red,
@@ -237,28 +243,28 @@ export function buildEarthquakeFrame(
     drawAlertPlacard(
       frame,
       1,
-      dataY - 1,
+      dataY,
       sidePlacardWidth,
       "地震",
       "GEMPA",
-      options.phase,
+      motionPhase,
       theme.red,
       theme.amber,
     );
     drawAlertPlacard(
       frame,
       frame.width - sidePlacardWidth - 1,
-      dataY - 1,
+      dataY,
       sidePlacardWidth,
       "地震",
       "BUMI",
-      options.phase + 3,
+      motionPhase + 3,
       theme.red,
       theme.amber,
     );
   }
 
-  drawEarthquakeSummary(frame, compact ? dataY + 8 : 18, options);
+  drawEarthquakeSummary(frame, compact ? dataY + 8 : 19, options);
   return frame;
 }
 
@@ -299,7 +305,7 @@ export function buildTsunamiFrame(options: TsunamiFrameOptions): TuiFrame {
   const headerWidth = Math.max(38, frame.width - centerMargin * 2);
   const headerX = Math.floor((frame.width - headerWidth) / 2);
 
-  drawWarningField(frame, options.phase);
+  drawWarningField(frame, motionPhase);
   drawLongHex(frame, {
     x: headerX,
     y: 1,
@@ -416,7 +422,7 @@ export function buildTsunamiFrame(options: TsunamiFrameOptions): TuiFrame {
           placardWidth,
           "津波",
           `ZONE ${row * 2 + side + 1}`,
-          options.phase + row * 2 + side,
+          motionPhase + row * 2 + side,
           theme.red,
         );
       }

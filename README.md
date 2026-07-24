@@ -54,8 +54,9 @@ loopback API.
   terminals. It constructs hazard rails, long-hex panels, alert placards,
   dossiers, linked ribs, solid color chassis, and real text directly in
   terminal cells; it never downsamples the Kitty image into block pixels.
-- Runs geometry as a staged reveal, then leaves selected warning triangles,
-  rails, and signals on a terminal-driven pulse with no idle JavaScript timer.
+- Runs geometry as a staged reveal, then keeps only operational rails and
+  signals moving on a low-frequency scene-local clock. Incremental line
+  rendering prevents those updates from repainting unchanged output.
 - Uses an operations-first command-center screen instead of making chat the
   primary canvas.
 - Provides Operations, Stations, Impact, and Transcript scenes.
@@ -124,8 +125,9 @@ eva --music "/path/to/your/licensed-track.mp3"
 eva --music "/path/to/your/licensed-track.mp3" --audio
 eva --youtube "https://music.youtube.com/watch?v=3BqrH0BzqSo"
 eva --youtube "https://music.youtube.com/watch?v=3BqrH0BzqSo" --audio
-eva --graphics kitty
 eva --graphics text
+eva --graphics auto
+eva --graphics kitty
 EVA_TUI_MUSIC="/path/to/track.wav" eva
 EVA_TUI_YOUTUBE="https://music.youtube.com/watch?v=3BqrH0BzqSo" eva
 EVA_TUI_GRAPHICS=kitty eva
@@ -193,9 +195,13 @@ Simulation screens are fixture-driven and always marked
 
 ## Terminal graphics
 
-`--graphics auto` is the default. Outside tmux it enables the Tier 3 renderer
-when EVA TUI detects Kitty, Ghostty, or WezTerm; otherwise it selects the
-portable text renderer.
+`--graphics text` is the default. It always selects the portable terminal
+renderer, including inside Apple Terminal, Kitty, Ghostty, and WezTerm. No
+graphics-capable terminal is required.
+
+`--graphics auto` is an explicit convenience mode. Outside tmux it enables the
+older Tier 3 image renderer when EVA detects Kitty, Ghostty, or WezTerm;
+otherwise it selects the portable text renderer.
 
 Tier 3 builds each scene as a high-resolution SVG composition, rasterizes it
 to a compressed PNG, transfers the PNG with the Kitty graphics protocol, creates
@@ -213,16 +219,40 @@ passthrough, request Kitty mode.
 
 The portable renderer is a separate semantic composition of the same scene
 hierarchy. It uses true-color ANSI styling, real selectable text, Unicode
-chassis lines, East Asian double-width labels, and discrete animation. It does
-not rasterize the SVG or encode pixels as quadrant, half-block, or Braille
-cells. This gives Apple Terminal a sharp operational layout whose geometry and
-labels remain stable across font sizes.
+chassis lines, East Asian double-width labels, and discrete animation. A small
+vector-to-cell stage ports the actual `long_shape.svg`, `hex_shape.svg`,
+`warning_shape_black.svg`, and skew-rectangle proportions into filled
+terminal surfaces. Each source shape is reinterpreted as stepped filled
+spans, diagonal cap masks, and connecting box-drawing seams; it is not sampled
+as square pixels. The screen is never converted into a block-pixel screenshot.
+This gives Apple Terminal a sharp operational layout while keeping labels
+selectable and functional.
 
 The reusable visual vocabulary, reference mapping, responsive rules, animation
 rules, and anti-patterns are documented in
 [`docs/TUI_DESIGN_GUIDE.md`](docs/TUI_DESIGN_GUIDE.md). Run
 `npm run preview:tui` to generate deterministic standard and compact scene
 previews.
+
+## Ratatui prototype
+
+An isolated Rust/Ratatui renderer now provides a higher-fidelity native TUI
+experiment without replacing `eva --tui`. It ports the checked-in upstream SVG
+proportions into hard cell-native fills, stepped spans, and inverted diagonal
+cutout masks, while reserving Braille for animated synchronization signals.
+The first functional screens are Earthquake and Stations.
+
+After installing Rust, run:
+
+```sh
+npm run dev:ratatui -- --scene earthquake
+npm run dev:ratatui -- --scene stations
+```
+
+This prototype is currently fixture-driven and does not yet connect to Codex.
+Its architecture, asset mapping, controls, deterministic dump mode, SVG
+comparison export, and planned renderer protocol are documented in
+[`docs/RATATUI_PROTOTYPE.md`](docs/RATATUI_PROTOTYPE.md).
 
 ## Music and visual references
 
