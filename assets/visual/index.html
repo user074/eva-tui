@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>EVA Codex Operations Console</title>
+    <link rel="stylesheet" href="/app.css" />
+    <link rel="stylesheet" href="/reference.css" />
+  </head>
+  <body>
+    <div class="scanlines" aria-hidden="true"></div>
+    <div id="app" class="console-shell">
+      <header class="topbar">
+        <div class="identity">
+          <div class="identity-mark">EVA</div>
+          <div>
+            <p class="eyebrow">NERV // MAGI SYSTEM</p>
+            <h1>CODEX OPERATIONS CONSOLE</h1>
+          </div>
+        </div>
+        <div class="top-status">
+          <div class="status-readout">
+            <span>LINK</span>
+            <strong id="connectionValue">BOOTING</strong>
+          </div>
+          <div class="status-readout wide">
+            <span>THREAD</span>
+            <strong id="threadValue">UNASSIGNED</strong>
+          </div>
+          <button id="audioButton" class="angular-button audio-button" type="button">
+            AUDIO // OFF
+          </button>
+        </div>
+      </header>
+
+      <div class="warning-band compact" aria-hidden="true">
+        <span>◢◤◢◤◢◤</span>
+        <b id="noticeValue">INITIALIZING</b>
+        <span>◢◤◢◤◢◤</span>
+      </div>
+
+      <div class="cockpit">
+        <nav class="scene-nav" aria-label="Console views">
+          <div class="nav-rail-label">SELECT DISPLAY</div>
+          <button type="button" data-scene="operations">
+            <span>01</span><b>OPERATIONS</b><small>Live task control</small>
+          </button>
+          <button type="button" data-scene="stations">
+            <span>02</span><b>STATIONS</b><small>Subsystem topology</small>
+          </button>
+          <button type="button" data-scene="impact">
+            <span>03</span><b>IMPACT</b><small>Workspace changes</small>
+          </button>
+          <button type="button" data-scene="transcript">
+            <span>04</span><b>TRANSCRIPT</b><small>Operator channel</small>
+          </button>
+          <div class="nav-actions">
+            <button id="earthquakeButton" class="simulate" type="button">
+              TEST // 地震
+            </button>
+            <button id="tsunamiButton" class="simulate" type="button">
+              TEST // 津波
+            </button>
+          </div>
+        </nav>
+
+        <main id="sceneRoot" class="scene-root" aria-live="polite"></main>
+
+        <aside class="telemetry">
+          <section class="sync-panel">
+            <div class="panel-kicker">SYNCHRONIZATION</div>
+            <div id="syncGauge" class="sync-gauge">
+              <div class="sync-center">
+                <strong id="syncPercent">--</strong>
+                <span>RATIO</span>
+              </div>
+            </div>
+            <div id="syncSteps" class="sync-steps">NO ACTIVE PLAN</div>
+          </section>
+          <section class="telemetry-panel">
+            <div class="panel-heading">
+              <span>ACTIVITY BUS</span><i id="turnPulse"></i>
+            </div>
+            <div id="activityRail" class="activity-rail"></div>
+          </section>
+          <section class="token-panel">
+            <div><span>MODEL</span><b id="modelValue">DETECTING</b></div>
+            <div><span>TOKENS</span><b id="tokenValue">0</b></div>
+            <div><span>DIFF</span><b id="diffValue">+0 / −0</b></div>
+          </section>
+        </aside>
+      </div>
+
+      <form id="commandForm" class="command-deck">
+        <label for="commandInput">指令 // OPERATOR DIRECTIVE</label>
+        <div class="command-row">
+          <span class="command-chevron">◢</span>
+          <input
+            id="commandInput"
+            name="command"
+            type="text"
+            autocomplete="off"
+            spellcheck="true"
+            placeholder="Give Codex an instruction…"
+          />
+          <button id="interruptButton" class="interrupt-button" type="button">
+            INTERRUPT
+          </button>
+          <button type="submit" class="execute-button">EXECUTE</button>
+        </div>
+        <div class="command-help">
+          <span>LOCAL LOOPBACK CONSOLE</span>
+          <span>/view · /simulate · /music · /interrupt</span>
+          <span id="workspaceValue"></span>
+        </div>
+      </form>
+    </div>
+
+    <div id="overlayRoot"></div>
+    <div id="toast" role="status"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

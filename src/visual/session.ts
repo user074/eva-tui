@@ -82,6 +82,8 @@ export class VisualSession extends EventEmitter {
     try {
       const { threadId, model } = await this.client.connect({
         cwd: this.options.cwd,
+        clientName: "eva_visual",
+        clientTitle: "EVA Visual",
         ...(this.options.model ? { model: this.options.model } : {}),
         ...(this.options.codexBin ? { codexBin: this.options.codexBin } : {}),
       });

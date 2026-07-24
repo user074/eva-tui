@@ -31,6 +31,7 @@ const MAX_BODY_BYTES = 64 * 1024;
 const STATIC_FILES = new Map<string, { path: string; type: string }>([
   ["/", { path: `${VISUAL_ROOT}index.html`, type: "text/html; charset=utf-8" }],
   ["/app.css", { path: `${VISUAL_ROOT}app.css`, type: "text/css; charset=utf-8" }],
+  ["/reference.css", { path: `${VISUAL_ROOT}reference.css`, type: "text/css; charset=utf-8" }],
   ["/app.js", { path: `${VISUAL_ROOT}app.js`, type: "text/javascript; charset=utf-8" }],
 ]);
 
@@ -41,6 +42,12 @@ const EWS_FILES = new Map<string, string>([
   ["SkewRectangle_Red_Flip.svg", "image/svg+xml"],
   ["long_shape.svg", "image/svg+xml"],
   ["strip.svg", "image/svg+xml"],
+  ["hex_shape.svg", "image/svg+xml"],
+  ["hex_shape_orange.svg", "image/svg+xml"],
+  ["hex_shape_rotate.svg", "image/svg+xml"],
+  ["hex_shape_orange_rotate.svg", "image/svg+xml"],
+  ["hexagons.svg", "image/svg+xml"],
+  ["radar-dish-svgrepo-com.svg", "image/svg+xml"],
   ["warning_gempa_black.svg", "image/svg+xml"],
   ["warning_gempa_red_yellow.svg", "image/svg+xml"],
   ["warning_hex_red.png", "image/png"],
@@ -145,6 +152,9 @@ function openExternal(url: string): void {
   const child = spawn(command.file, command.args, {
     detached: true,
     stdio: "ignore",
+  });
+  child.once("error", () => {
+    // The protected URL has already been printed for manual opening.
   });
   child.unref();
 }

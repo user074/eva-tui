@@ -198,7 +198,7 @@ async function main(): Promise<void> {
     <App
       cwd={options.cwd}
       audioOn={options.audioOn}
-      graphicsMode={options.graphicsMode}
+      graphicsMode={options.graphicsMode ?? "auto"}
       {...(options.model ? { model: options.model } : {})}
       {...(options.codexBin ? { codexBin: options.codexBin } : {})}
       {...(options.musicPath ? { musicPath: options.musicPath } : {})}

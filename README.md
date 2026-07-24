@@ -1,27 +1,46 @@
-# EVA TUI
+# EVA
 
-EVA TUI is an experimental, functional terminal client for Codex with an
-anime command-center visual language: high-contrast warning states, kanji
-labels, synchronization rails, dense operational telemetry, and optional
-ambient audio.
+EVA is an experimental pair of functional Codex clients with an anime
+command-center visual language: high-contrast warning states, kanji labels,
+synchronization rails, dense operational telemetry, and optional ambient
+audio.
 
-It is a separate client, not a patch to Codex. EVA TUI launches the installed
-`codex app-server` as a child process and speaks its JSONL protocol over
-stdio. Updating Codex therefore does not overwrite EVA TUI, and installing
-EVA TUI does not modify Codex.
+It is a separate client, not a patch to Codex. Both modes launch the installed
+`codex app-server` as a child process and speak its JSONL protocol over stdio.
+Updating Codex therefore does not overwrite EVA, and installing EVA does not
+modify Codex.
 
 ```text
-keyboard ──> EVA TUI (Ink/React) ──JSONL──> codex app-server ──> Codex
-                 │
-                 ├── transcript / plan / diff / token / MCP telemetry
-                 ├── command and file-change approval controls
-                 └── optional local audio player
+                          ┌── EVA TUI (Ink/React)
+operator ──> EVA core ───┤
+                          └── EVA Visual (loopback browser renderer)
+                                  │
+                                  └──JSONL──> codex app-server ──> Codex
 ```
+
+- `eva --tui` is the portable terminal interface and remains the default.
+- `eva --visual` starts a graphical console on `127.0.0.1` and opens it in the
+  default browser.
+- Both expose the same live transcript, plan, activity, diff, token, MCP,
+  approval, interrupt, simulation, and audio state.
+
+The visual console is not a hosted web service. Its browser page is a local
+renderer connected to the EVA Node process through a token-protected
+loopback API.
 
 ## Version 0.5
 
 - Starts a new Codex thread in the selected workspace.
 - Streams Codex responses into the thread spine.
+- Separates `eva --tui` and `eva --visual` at the rendering boundary while
+  retaining the same Codex app-server client and state model.
+- Adds a functional graphical operations console with live Operations,
+  Stations, Impact, and Transcript displays; Codex command submission;
+  interrupts; approval controls; simulations; and audio controls.
+- Uses the upstream skewed station blades, long warning shape, warning field,
+  placards, and alert components directly in the visual renderer. The station
+  view follows the upstream alternating rib-and-spine topology, while the
+  warning displays preserve the assembled earthquake and tsunami hierarchy.
 - Adds a Tier 3 Kitty-graphics backend that rasterizes high-resolution warning
   compositions and anchors them inside the Ink layout with Unicode image
   placeholders.
@@ -60,7 +79,8 @@ keyboard ──> EVA TUI (Ink/React) ──JSONL──> codex app-server ──>
 
 - Node.js 22 or newer.
 - A current `codex` CLI installed, authenticated, and available on `PATH`.
-- A terminal with color and Unicode support.
+- For `--tui`: a terminal with color and Unicode support.
+- For `--visual`: a modern local browser.
 - For local-file or generated audio: `afplay` on macOS, or `mpv`, `ffplay`,
   `paplay`, or `aplay`.
 - For YouTube audio: a browser with JavaScript enabled.
@@ -71,27 +91,34 @@ keyboard ──> EVA TUI (Ink/React) ──JSONL──> codex app-server ──>
 ## Install and run
 
 ```sh
-pnpm install
-pnpm build
-node dist/cli.js
+npm install
+npm run build
+node dist/cli.js --tui
+node dist/cli.js --visual
 ```
 
 During development:
 
 ```sh
-pnpm dev
+npm run dev -- --tui
+npm run dev -- --visual
 ```
 
 To make `eva` available as a command:
 
 ```sh
-pnpm link --global
-eva --cwd /path/to/project
+npm link
+eva --tui --cwd /path/to/project
+eva --visual --cwd /path/to/project
 ```
 
 Useful options:
 
 ```sh
+eva --tui
+eva --visual
+eva --visual --port 0
+eva --visual --no-open
 eva --model gpt-5.6-codex
 eva --music "/path/to/your/licensed-track.mp3"
 eva --music "/path/to/your/licensed-track.mp3" --audio
@@ -106,6 +133,34 @@ EVA_TUI_GRAPHICS=kitty eva
 
 Audio can be toggled at any time with `Ctrl-G` or by entering `/music`.
 `--music` and `--youtube` are mutually exclusive.
+
+Quoted home-relative music paths are expanded by EVA, so both
+`--music ~/Downloads/track.mp3` and `--music "~/Downloads/track.mp3"` work.
+
+## Visual console
+
+`eva --visual` binds only to `127.0.0.1`, creates an unpredictable session
+token, prints the protected URL, and opens it in the default browser. Use
+`--no-open` to print the URL without opening it or `--port 0` to select a free
+port.
+
+The first graphical version includes:
+
+- a live Operations display with turn state, plan synchronization, transcript,
+  activity, token use, and workspace impact;
+- a responsive Station Matrix made from the attributed upstream station blade
+  SVGs and state-derived system nodes;
+- a workspace Impact field and full Transcript display;
+- full-screen, explicitly marked earthquake and tsunami UI simulations;
+- full-screen Codex approval gates with authorize-once, authorize-session, and
+  decline actions;
+- command submission, turn interruption, scene selection, and audio toggling.
+
+The graphical layer contains no Codex credentials and does not talk to OpenAI
+directly. Closing its terminal process tears down the Codex child process,
+audio director, event stream, and local server. The renderer boundary and
+security model are documented in
+[`docs/VISUAL_CONSOLE.md`](docs/VISUAL_CONSOLE.md).
 
 ## Controls
 
@@ -165,8 +220,9 @@ labels remain stable across font sizes.
 
 The reusable visual vocabulary, reference mapping, responsive rules, animation
 rules, and anti-patterns are documented in
-[`docs/TUI_DESIGN_GUIDE.md`](docs/TUI_DESIGN_GUIDE.md). Run `pnpm preview:tui`
-to generate deterministic standard and compact scene previews.
+[`docs/TUI_DESIGN_GUIDE.md`](docs/TUI_DESIGN_GUIDE.md). Run
+`npm run preview:tui` to generate deterministic standard and compact scene
+previews.
 
 ## Music and visual references
 
@@ -221,10 +277,10 @@ than hanging the turn.
 ## Verification
 
 ```sh
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm preview:tui
+npm run typecheck
+npm test
+npm run build
+npm run preview:tui
 ```
 
 Licensed under Apache-2.0.

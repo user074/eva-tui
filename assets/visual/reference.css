@@ -1,0 +1,1807 @@
+/* Reference-grounded renderer
+ *
+ * This layer deliberately follows bagusindrayana/ews-concept-new's screen
+ * grammar: a full-screen field, floating bordered cards, striped headers,
+ * multi-spine station ribs, and the original warning assemblies.
+ */
+
+:root {
+  --orange: #ffaa00;
+  --orange-2: #fc8416;
+  --red: #e60908;
+  --red-dark: #620405;
+  --green: #00ff80;
+  --cyan: #ffaa00;
+  --yellow: #ffaa00;
+  --white: #ffffff;
+  --dim: #8a7656;
+  --line: rgba(255, 170, 0, 0.42);
+  --panel: #000000;
+  --panel-2: #090704;
+  --ink: #000000;
+}
+
+html,
+body {
+  min-width: 920px;
+  min-height: 680px;
+  background: #000;
+  font-family: "Roboto Condensed", "Arial Narrow", "SFMono-Regular", Menlo,
+    monospace;
+}
+
+body {
+  background: #000;
+}
+
+.scanlines {
+  opacity: 0.08;
+}
+
+.console-shell {
+  position: relative;
+  display: block;
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.warning-band {
+  display: none;
+}
+
+/* The upstream primary screen uses small floating controls rather than a
+ * persistent application header. Keep the system identity as one such card. */
+.topbar {
+  position: fixed;
+  z-index: 40;
+  top: 10px;
+  left: 10px;
+  display: block;
+  width: 278px;
+  height: auto;
+  padding: 6px;
+  border: 3px solid var(--orange);
+  border-radius: 8px;
+  background: #000;
+}
+
+.identity {
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 3px solid var(--orange);
+}
+
+.identity-mark {
+  width: 52px;
+  height: 35px;
+  color: #000;
+  background: var(--orange);
+  font-size: 18px;
+  clip-path: none;
+}
+
+.eyebrow {
+  color: var(--orange);
+  font-size: 7px;
+}
+
+.identity h1 {
+  color: var(--orange);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.top-status {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.status-readout,
+.status-readout.wide {
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--orange);
+  background: #000;
+}
+
+.status-readout span {
+  color: var(--orange);
+  font-size: 6px;
+}
+
+.status-readout strong {
+  color: var(--orange);
+  font-size: 8px;
+}
+
+.audio-button {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--orange);
+  border-radius: 0;
+  color: var(--orange);
+  background: #000;
+  font-size: 7px;
+  clip-path: none;
+}
+
+.audio-button:hover {
+  color: #000;
+  background: var(--orange);
+}
+
+.cockpit {
+  position: fixed;
+  z-index: 1;
+  inset: 0 0 92px;
+  display: block;
+  border: 0;
+}
+
+/* Top-center button rail mirrors the reference desktop menu. */
+.scene-nav {
+  position: fixed;
+  z-index: 50;
+  top: 8px;
+  left: 50%;
+  display: flex;
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  transform: translateX(-50%);
+}
+
+.nav-rail-label {
+  display: none;
+}
+
+.scene-nav > button:not(.simulate) {
+  display: block;
+  width: auto;
+  min-width: 86px;
+  margin: 0 2px;
+  padding: 7px 10px;
+  border: 2px solid var(--orange);
+  border-radius: 0;
+  color: var(--orange);
+  background: #000;
+  text-align: center;
+  clip-path: none;
+}
+
+.scene-nav > button:not(.simulate):hover,
+.scene-nav > button.active {
+  color: #000;
+  border-color: var(--orange);
+  background: var(--orange);
+}
+
+.scene-nav button span {
+  display: none;
+}
+
+.scene-nav button b {
+  font-size: 9px;
+}
+
+.scene-nav button small {
+  display: none;
+}
+
+.nav-actions {
+  position: static;
+  display: flex;
+  margin-left: 8px;
+}
+
+.simulate {
+  min-width: 76px;
+  margin: 0 2px;
+  padding: 7px 8px;
+  border: 2px solid var(--red);
+  color: var(--red);
+  background: #000;
+  font-size: 8px;
+}
+
+.scene-root {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+/* Live activity becomes a floating EWS event-log card. */
+.telemetry {
+  position: fixed;
+  z-index: 30;
+  top: 88px;
+  right: 10px;
+  display: block;
+  width: 246px;
+  height: auto;
+  max-height: calc(100vh - 204px);
+  padding: 0;
+  border: 3px solid var(--red);
+  border-radius: 8px;
+  background: #000;
+  overflow: hidden;
+}
+
+.sync-panel,
+.telemetry-panel,
+.token-panel {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+  border-bottom: 3px solid var(--red);
+  border-radius: 0;
+  background: #000;
+  clip-path: none;
+}
+
+.panel-kicker,
+.panel-heading {
+  color: var(--red);
+}
+
+.sync-panel {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  align-items: center;
+  min-height: 72px;
+}
+
+.panel-kicker {
+  grid-column: 1 / -1;
+  padding: 2px 5px 5px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      var(--red) 0 12px,
+      transparent 12px 24px
+    );
+  color: #fff;
+  text-align: center;
+}
+
+.panel-kicker::before {
+  padding: 2px 5px;
+  background: #000;
+  content: "SYNCHRONIZATION";
+}
+
+.sync-gauge {
+  width: 48px;
+  height: 48px;
+  margin: 6px 0 0;
+  background:
+    radial-gradient(circle, #000 54%, transparent 55%),
+    conic-gradient(var(--red) var(--sync-value, 0%), #261011 0);
+}
+
+.sync-gauge::before,
+.sync-gauge::after {
+  display: none;
+}
+
+.sync-center strong {
+  color: var(--red);
+  font-size: 12px;
+}
+
+.sync-center span {
+  font-size: 5px;
+}
+
+.sync-steps {
+  padding-left: 8px;
+  color: var(--red);
+  font-size: 8px;
+  text-align: left;
+  white-space: normal;
+}
+
+.telemetry-panel {
+  max-height: 250px;
+  overflow: hidden;
+}
+
+.activity-rail {
+  max-height: 210px;
+  overflow: hidden;
+}
+
+.activity-entry {
+  padding: 4px 5px;
+  border: 1px solid var(--red);
+  border-left-width: 3px;
+}
+
+.activity-entry b {
+  color: var(--red);
+}
+
+.activity-entry span {
+  color: #8f4d4e;
+}
+
+.token-panel {
+  border-bottom: 0;
+}
+
+.token-panel span {
+  color: var(--red);
+}
+
+.token-panel b {
+  color: var(--red);
+}
+
+body[data-scene="stations"] .telemetry,
+body[data-scene="impact"] .telemetry,
+body[data-scene="transcript"] .telemetry {
+  display: none;
+}
+
+.scene {
+  position: relative;
+  min-height: 100%;
+  padding: 0;
+}
+
+.ews-field {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(255, 170, 0, 0.075), transparent 34%),
+    #000;
+}
+
+.ews-field::before {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background-color: var(--orange);
+  content: "";
+  mask-image: url("/ews/hexagons.svg");
+  mask-size: 28px 49px;
+}
+
+.ews-scene-title {
+  position: absolute;
+  z-index: 8;
+  top: 55px;
+  left: 50%;
+  display: grid;
+  grid-template-columns: 110px auto 110px;
+  align-items: center;
+  width: min(560px, 48vw);
+  height: 42px;
+  margin: 0;
+  padding: 5px;
+  border: 3px solid var(--red);
+  border-radius: 8px;
+  background: #000;
+  transform: translateX(-50%);
+}
+
+.ews-scene-title h2 {
+  z-index: 1;
+  padding: 4px 12px;
+  color: var(--red);
+  background: #000;
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ews-scene-title h2 span {
+  color: var(--red);
+}
+
+.ews-scene-title p {
+  display: none;
+}
+
+.ews-stripe {
+  width: 100%;
+  height: 100%;
+  min-height: 24px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      var(--orange) 0 13px,
+      rgba(255, 94, 0, 0.8) 13px 16px,
+      transparent 16px 31px
+    );
+  background-size: 44px 44px;
+  animation: reference-stripe 10s linear infinite;
+}
+
+.ews-stripe.reverse {
+  animation-direction: reverse;
+}
+
+.ews-stripe-red {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      var(--red) 0 13px,
+      rgba(255, 17, 0, 0.75) 13px 16px,
+      transparent 16px 31px
+    );
+  background-size: 44px 44px;
+}
+
+/* Operations: a field with floating EWS cards, matching the reference map UI. */
+.operations-map {
+  position: absolute;
+  z-index: 1;
+  inset: 118px 510px 120px 320px;
+  min-width: 330px;
+  overflow: hidden;
+}
+
+.map-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  border: 1px solid rgba(255, 170, 0, 0.45);
+  background:
+    linear-gradient(rgba(255, 170, 0, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 170, 0, 0.18) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+.map-grid::before,
+.map-grid::after {
+  position: absolute;
+  inset: 11%;
+  border: 1px solid var(--orange);
+  border-radius: 50%;
+  content: "";
+  opacity: 0.34;
+}
+
+.map-grid::after {
+  inset: 24%;
+}
+
+.map-axis {
+  position: absolute;
+  z-index: 1;
+  background: rgba(255, 170, 0, 0.55);
+}
+
+.map-axis.horizontal {
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+
+.map-axis.vertical {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+.map-radar {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 12px;
+  width: 42px;
+  height: 42px;
+  opacity: 0.45;
+}
+
+.map-radar img {
+  width: 100%;
+  height: 100%;
+}
+
+.map-radar.active {
+  opacity: 1;
+  animation: reference-blink 1s infinite;
+}
+
+.core-assembly,
+.satellite-node {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+}
+
+.core-assembly {
+  top: 50%;
+  left: 50%;
+  width: 210px;
+  height: 180px;
+  transform: translate(-50%, -50%);
+}
+
+.core-assembly img,
+.satellite-node img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.core-assembly > div,
+.satellite-node > div {
+  z-index: 1;
+  color: #000;
+  text-align: center;
+}
+
+.core-assembly small,
+.core-assembly b,
+.core-assembly span,
+.satellite-node small,
+.satellite-node b {
+  display: block;
+}
+
+.core-assembly small {
+  font-size: 8px;
+}
+
+.core-assembly b {
+  font-size: 26px;
+}
+
+.core-assembly span {
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.core-assembly.running {
+  filter: drop-shadow(0 0 18px rgba(255, 170, 0, 0.7));
+}
+
+.satellite-node {
+  width: 92px;
+  height: 80px;
+}
+
+.satellite-node small {
+  font-size: 6px;
+}
+
+.satellite-node b {
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.satellite-node.node-1 {
+  top: 8%;
+  left: 15%;
+}
+
+.satellite-node.node-2 {
+  top: 9%;
+  right: 14%;
+}
+
+.satellite-node.node-3 {
+  bottom: 8%;
+  left: 13%;
+}
+
+.satellite-node.node-4 {
+  right: 12%;
+  bottom: 7%;
+}
+
+.satellite-line {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  width: clamp(75px, 12vw, 170px);
+  height: 2px;
+  background: var(--orange);
+  transform-origin: center;
+}
+
+.node-1 .satellite-line {
+  left: 70%;
+  transform: rotate(32deg);
+}
+
+.node-2 .satellite-line {
+  right: 70%;
+  transform: rotate(-32deg);
+}
+
+.node-3 .satellite-line {
+  left: 70%;
+  transform: rotate(-28deg);
+}
+
+.node-4 .satellite-line {
+  right: 70%;
+  transform: rotate(28deg);
+}
+
+.map-coordinate {
+  position: absolute;
+  color: var(--orange);
+  font-size: 7px;
+  opacity: 0.7;
+}
+
+.map-coordinate.c1 {
+  bottom: 6px;
+  left: 7px;
+}
+
+.map-coordinate.c2 {
+  top: 6px;
+  right: 7px;
+}
+
+.ews-card {
+  border: 3px solid var(--orange);
+  border-radius: 8px;
+  color: var(--orange);
+  background: #000;
+}
+
+.ews-card.danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.floating-card {
+  position: absolute;
+  z-index: 12;
+  overflow: hidden;
+  width: 294px;
+}
+
+.floating-card > header,
+.impact-propagation > header {
+  position: relative;
+  height: 38px;
+  padding: 5px;
+  overflow: hidden;
+  border-bottom: 3px solid currentColor;
+}
+
+.floating-card > header b,
+.impact-propagation > header b {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 3px 7px;
+  color: currentColor;
+  background: #000;
+  font-size: 9px;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.card-body {
+  padding: 8px;
+  font-size: 9px;
+}
+
+.turn-card {
+  top: 114px;
+  left: 12px;
+}
+
+.plan-card {
+  bottom: 20px;
+  left: 12px;
+  max-height: 240px;
+}
+
+.transcript-card {
+  top: 114px;
+  right: 266px;
+}
+
+.impact-card {
+  right: 266px;
+  bottom: 20px;
+}
+
+.turn-card .card-body {
+  display: grid;
+  grid-template-columns: 94px 1fr;
+  gap: 8px;
+}
+
+.magnitude-block {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-height: 78px;
+  padding: 7px 24px 7px 7px;
+  border: 2px solid var(--orange);
+}
+
+.magnitude-block strong {
+  overflow: hidden;
+  color: var(--orange);
+  font-size: 14px;
+  text-overflow: ellipsis;
+}
+
+.magnitude-block span {
+  margin-top: 4px;
+  font-size: 7px;
+}
+
+.vertical-stripe {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      var(--orange) 0 8px,
+      transparent 8px 16px
+    );
+}
+
+.turn-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.turn-card th,
+.turn-card td {
+  padding: 3px;
+  border-bottom: 1px solid rgba(255, 170, 0, 0.32);
+  font-size: 7px;
+}
+
+.turn-card th {
+  text-align: left;
+}
+
+.turn-card td {
+  max-width: 95px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 6px;
+  border: 2px solid var(--orange);
+  font-size: 8px;
+}
+
+.plan-card .plan-list {
+  max-height: 182px;
+  overflow: auto;
+}
+
+.plan-card .plan-step {
+  grid-template-columns: 18px 1fr;
+  padding: 4px;
+  border-color: var(--orange);
+}
+
+.plan-card .plan-step small {
+  display: none;
+}
+
+.transcript-card .transcript-list {
+  max-height: 210px;
+}
+
+.transcript-card .transcript-line {
+  padding: 5px 5px 5px 52px;
+  border-color: var(--red);
+  color: var(--red);
+  font-size: 8px;
+}
+
+.transcript-card .transcript-line::before {
+  top: 5px;
+  color: #8f4d4e;
+}
+
+.impact-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.impact-summary span {
+  padding: 4px;
+  border: 1px solid var(--orange);
+  font-size: 7px;
+  text-align: center;
+}
+
+.impact-summary b {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.compact-files {
+  max-height: 75px;
+  margin: 6px 0 0;
+  padding-left: 20px;
+  overflow: hidden;
+  font-size: 7px;
+  line-height: 1.6;
+}
+
+.ews-empty {
+  padding: 12px 3px 3px;
+  color: #8b7044;
+  text-align: center;
+}
+
+.system-ribbon {
+  position: absolute;
+  z-index: 6;
+  right: 282px;
+  bottom: 1px;
+  left: 318px;
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  color: var(--orange);
+  border-top: 1px solid var(--orange);
+  font-size: 7px;
+}
+
+/* Station status: direct multi-branch translation of RibCageLayout. */
+.stations-scene {
+  overflow: auto;
+}
+
+.ews-rib-layout {
+  position: absolute;
+  z-index: 2;
+  top: 104px;
+  right: 16px;
+  bottom: 8px;
+  left: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 40px 16px 76px;
+}
+
+.ews-rib-layout__branch {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  max-width: 250px;
+  min-width: 145px;
+  padding: 28px 0;
+}
+
+.ews-rib-layout__spine {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  background: var(--orange);
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: top;
+  animation: reference-spine 0.5s ease-out forwards;
+  animation-delay: var(--branch-delay);
+}
+
+.ews-rib-layout__grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  width: 100%;
+}
+
+.ews-rib-layout__node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 84px;
+}
+
+.ews-rib-layout__node.left {
+  grid-column: 1;
+  justify-content: flex-end;
+}
+
+.ews-rib-layout__node.right {
+  grid-column: 2;
+  justify-content: flex-start;
+}
+
+.ews-rib-node {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 96px;
+  width: 96px;
+  height: 26px;
+  margin-right: -7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: rotate(-21deg);
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.ews-rib-node.flip {
+  order: 2;
+  margin-right: 0;
+  margin-left: -7px;
+  transform: rotate(21deg);
+}
+
+.ews-rib-node:hover {
+  transform: rotate(-21deg) translateX(-16px);
+}
+
+.ews-rib-node.flip:hover {
+  transform: rotate(21deg) translateX(16px);
+}
+
+.ews-rib-node img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ews-rib-node > span {
+  position: relative;
+  z-index: 1;
+  color: #000;
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.ews-rib-node.selected {
+  filter: drop-shadow(0 0 6px var(--orange));
+  animation: reference-blink 1s infinite;
+}
+
+.ews-rib-connector {
+  position: relative;
+  display: flex;
+  width: 92px;
+  height: 2px;
+  background: var(--orange);
+}
+
+.ews-rib-connector.left {
+  justify-content: flex-start;
+}
+
+.ews-rib-connector.right {
+  order: 1;
+  justify-content: flex-end;
+}
+
+.ews-rib-connector > span {
+  position: absolute;
+  top: 5px;
+  width: 88px;
+  color: var(--orange);
+  text-transform: uppercase;
+}
+
+.ews-rib-connector.left > span {
+  left: 2px;
+  text-align: left;
+}
+
+.ews-rib-connector.right > span {
+  right: 2px;
+  text-align: right;
+}
+
+.ews-rib-connector b,
+.ews-rib-connector small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ews-rib-connector b {
+  font-size: 7px;
+}
+
+.ews-rib-connector small {
+  margin-top: 2px;
+  font-size: 6px;
+}
+
+.station-inspector {
+  position: fixed;
+  z-index: 20;
+  right: 18px;
+  bottom: 106px;
+  left: 18px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  min-height: 58px;
+  padding: 8px 18px;
+  color: var(--orange);
+  background: #000;
+  clip-path: none;
+}
+
+.station-inspector code {
+  color: var(--orange);
+}
+
+/* Impact field: actual upstream red/orange hex assets in a honeycomb. */
+.impact-scene {
+  overflow: auto;
+  padding: 112px 30px 110px;
+}
+
+.impact-scene .ews-scene-title {
+  position: fixed;
+}
+
+.impact-hero {
+  position: relative;
+  z-index: 3;
+  width: 360px;
+  margin: 0;
+}
+
+.impact-counter {
+  min-height: 72px;
+  padding: 11px;
+  border: 3px solid var(--orange);
+  color: var(--orange);
+  background: #000;
+  clip-path: none;
+}
+
+.impact-counter.additions {
+  color: var(--orange);
+  background: #000;
+}
+
+.impact-counter.deletions {
+  color: var(--red);
+  border-color: var(--red);
+  background: #000;
+}
+
+.impact-counter b {
+  font-size: 22px;
+}
+
+.impact-hex-field {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  width: calc(100% - 400px);
+  margin: 32px 0 0 370px;
+}
+
+.impact-hex {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 170px;
+  height: 148px;
+  margin: -18px -8px 0;
+}
+
+.impact-hex:nth-child(even) {
+  transform: translateY(70px);
+}
+
+.impact-hex img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.impact-hex > div {
+  z-index: 1;
+  width: 68%;
+  color: #000;
+  text-align: center;
+}
+
+.impact-hex span,
+.impact-hex b,
+.impact-hex small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.impact-hex span {
+  font-size: 7px;
+}
+
+.impact-hex b {
+  margin-top: 3px;
+  font-size: 10px;
+}
+
+.impact-hex small {
+  margin-top: 3px;
+  font-size: 6px;
+}
+
+.impact-propagation {
+  position: fixed;
+  z-index: 10;
+  bottom: 106px;
+  left: 30px;
+  width: 340px;
+  overflow: hidden;
+}
+
+.impact-propagation .card-body > div {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 7px;
+  align-items: center;
+  margin: 5px 0;
+  font-size: 7px;
+}
+
+.impact-propagation .card-body i {
+  height: 1px;
+  background: var(--orange);
+}
+
+/* Transcript retains function but uses the reference card and stripe language. */
+.transcript-scene {
+  padding: 112px 280px 110px 34px;
+  overflow: auto;
+  background:
+    linear-gradient(rgba(230, 9, 8, 0.06) 1px, transparent 1px),
+    #000;
+  background-size: 100% 24px;
+}
+
+.transcript-scene .ews-scene-title {
+  position: fixed;
+}
+
+.transcript-scene > .transcript-list {
+  position: relative;
+  z-index: 2;
+  max-height: none;
+  padding: 10px;
+  border: 3px solid var(--red);
+  border-radius: 8px;
+  background: #000;
+}
+
+.transcript-scene .transcript-line {
+  margin-bottom: 5px;
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-left-width: 4px;
+}
+
+/* Original earthquake assembly */
+.reference-overlay-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.reference-earthquake {
+  background:
+    radial-gradient(circle, rgba(230, 9, 8, 0.12), transparent 48%),
+    rgba(0, 0, 0, 0.92);
+}
+
+.earthquake-warning-assembly {
+  position: relative;
+  z-index: 10;
+  width: 450px;
+  height: 500px;
+  transform: scale(1.15);
+}
+
+.reference-long-hex {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  width: 275px;
+  min-height: 150px;
+  margin: 0 auto;
+  opacity: 0;
+  animation: reference-pop 0.3s 0.9s ease-in-out forwards;
+}
+
+.reference-long-hex > img:first-child {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.reference-long-hex > div {
+  z-index: 1;
+  grid-column: 2;
+  color: #000;
+  font-weight: 900;
+  text-align: center;
+}
+
+.reference-long-hex b,
+.reference-long-hex span {
+  display: block;
+}
+
+.reference-long-hex b {
+  font-size: 20px;
+}
+
+.reference-long-hex span {
+  font-size: 9px;
+}
+
+.reference-long-hex .mini-warning {
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  opacity: 0;
+  animation: reference-blink 0.5s 2s infinite;
+}
+
+.reference-long-hex .mini-warning.left {
+  grid-column: 1;
+}
+
+.reference-long-hex .mini-warning.right {
+  grid-column: 3;
+}
+
+.black-warning-pair {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: -60px;
+}
+
+.black-warning-pair img {
+  width: 100px;
+  height: 100px;
+  opacity: 0;
+  animation: reference-pop 0.3s 1.1s forwards;
+}
+
+.earthquake-data-coupler {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.reference-data-hex {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 80px;
+  margin: 0 -3px;
+  opacity: 0;
+  animation: reference-pop 0.3s 2.2s forwards;
+}
+
+.reference-data-hex:nth-child(1) {
+  animation-delay: 2s;
+}
+
+.reference-data-hex:nth-child(3) {
+  animation-delay: 2.4s;
+}
+
+.reference-data-hex.raised {
+  margin-top: -40px;
+}
+
+.reference-data-hex img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.reference-data-hex > div {
+  z-index: 1;
+  width: 60%;
+  color: var(--red);
+  text-align: center;
+}
+
+.reference-data-hex b,
+.reference-data-hex span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-data-hex b {
+  font-size: 13px;
+}
+
+.reference-data-hex span {
+  margin-top: 2px;
+  font-size: 5px;
+}
+
+.yellow-warning-pair {
+  position: absolute;
+  z-index: 5;
+  top: 174px;
+  right: 25px;
+  left: 25px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.yellow-warning-pair img {
+  width: 50px;
+  height: 80px;
+  opacity: 0;
+  animation:
+    reference-pop 0.3s 2s forwards,
+    reference-blink 1s 2.3s infinite;
+}
+
+.earthquake-detail {
+  width: 360px;
+  margin: 34px auto 0;
+  padding: 7px;
+  color: var(--red);
+  border: 2px solid var(--red);
+  background: #000;
+  font-size: 8px;
+  text-align: center;
+}
+
+.earthquake-band {
+  position: absolute;
+  z-index: 15;
+  right: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 82px;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.earthquake-band.top {
+  top: 0;
+}
+
+.earthquake-band.bottom {
+  bottom: 0;
+  transform: rotate(180deg);
+}
+
+.earthquake-band .ews-stripe {
+  height: 74px;
+}
+
+.band-copy {
+  position: absolute;
+  top: 19px;
+  right: 0;
+  left: 0;
+  display: flex;
+  gap: 48px;
+  overflow: hidden;
+  padding: 7px 0;
+  color: var(--red);
+  border: 3px solid var(--red);
+  background: #000;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 0.8;
+  white-space: nowrap;
+}
+
+.band-copy span {
+  animation: reference-scroll 9s linear infinite;
+}
+
+.band-copy.reverse span {
+  animation-direction: reverse;
+}
+
+/* Original tsunami field and central striped dossier. */
+.reference-tsunami {
+  background: #000;
+}
+
+.tsunami-warning-field {
+  position: absolute;
+  inset: -40%;
+  opacity: 1;
+  background-image: url("/ews/warning_hex_red.png");
+  background-repeat: repeat;
+  background-size: 108px auto;
+  transform: rotate(-90deg);
+  animation: tsunami-field-enter 1.2s ease-out both;
+}
+
+.tsunami-warning-assembly {
+  position: relative;
+  z-index: 8;
+  width: 450px;
+  height: 520px;
+  transform: scale(1.1);
+}
+
+.tsunami-dossier {
+  position: relative;
+  width: 345px;
+  min-height: 274px;
+  margin: -8px auto 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+  opacity: 0;
+  animation: reference-pop 0.3s 2s forwards;
+}
+
+.dossier-stripe {
+  position: absolute;
+  z-index: 2;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      var(--red) 0 8px,
+      transparent 8px 16px
+    );
+  background-size: 24px 24px;
+  animation: reference-stripe 8s linear infinite;
+}
+
+.dossier-stripe.top,
+.dossier-stripe.bottom {
+  right: 0;
+  left: 0;
+  height: 8px;
+}
+
+.dossier-stripe.top {
+  top: 0;
+}
+
+.dossier-stripe.bottom {
+  bottom: 0;
+  animation-direction: reverse;
+}
+
+.dossier-stripe.left,
+.dossier-stripe.right {
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  writing-mode: vertical-rl;
+}
+
+.dossier-stripe.left {
+  left: 0;
+}
+
+.dossier-stripe.right {
+  right: 0;
+  animation-direction: reverse;
+}
+
+.dossier-inner {
+  padding: 24px;
+}
+
+.dossier-title {
+  position: relative;
+  height: 38px;
+  padding: 4px;
+  overflow: hidden;
+  border: 3px solid var(--red);
+  border-radius: 8px;
+}
+
+.dossier-title b {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 3px 6px;
+  color: var(--red);
+  background: #000;
+  font-size: 9px;
+  transform: translate(-50%, -50%);
+}
+
+.dossier-card {
+  margin-top: 7px;
+  border: 3px solid var(--red);
+  border-radius: 8px;
+  color: var(--red);
+}
+
+.dossier-card header {
+  position: relative;
+  height: 34px;
+  padding: 4px;
+  overflow: hidden;
+  border-bottom: 3px solid var(--red);
+}
+
+.dossier-card header b {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 2px 5px;
+  background: #000;
+  font-size: 8px;
+  transform: translate(-50%, -50%);
+}
+
+.dossier-card p {
+  margin: 0;
+  padding: 8px;
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.dossier-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 7px 7px;
+  border: 1px solid var(--red);
+}
+
+.dossier-card dl div {
+  padding: 5px;
+  border-right: 1px solid var(--red);
+  text-align: center;
+}
+
+.dossier-card dl div:last-child {
+  border: 0;
+}
+
+.dossier-card dt {
+  font-size: 5px;
+}
+
+.dossier-card dd {
+  overflow: hidden;
+  margin: 3px 0 0;
+  font-size: 7px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+}
+
+.tsunami-placard {
+  position: absolute;
+  z-index: 12;
+  padding: 4px;
+  border-radius: 12px;
+  background: #000;
+  opacity: 0;
+  transform: scale(1.5);
+  animation: tsunami-placard-pop 0.3s var(--placard-delay) forwards;
+}
+
+.tsunami-placard > div {
+  padding: 4px;
+  border: 3px solid var(--red);
+  border-radius: 8px;
+}
+
+.tsunami-placard img {
+  display: block;
+  width: 50px;
+  height: 80px;
+}
+
+.tsunami-placard.top-left {
+  top: 13%;
+  left: 8%;
+}
+
+.tsunami-placard.middle-left {
+  top: calc(50% - 52px);
+  left: 20%;
+}
+
+.tsunami-placard.bottom-left {
+  bottom: 13%;
+  left: 8%;
+}
+
+.tsunami-placard.top-right {
+  top: 13%;
+  right: 8%;
+}
+
+.tsunami-placard.middle-right {
+  top: calc(50% - 52px);
+  right: 20%;
+}
+
+.tsunami-placard.bottom-right {
+  right: 8%;
+  bottom: 13%;
+}
+
+.overlay-close {
+  z-index: 40;
+  top: 14px;
+  right: 14px;
+  border: 2px solid var(--red);
+  color: var(--red);
+}
+
+.approval-overlay .earthquake-band .band-copy span {
+  font-size: 0;
+}
+
+.approval-overlay .earthquake-band .band-copy span::after {
+  content: "AUTHORIZATION";
+  font-size: 28px;
+}
+
+.command-deck {
+  position: fixed;
+  z-index: 70;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 92px;
+  padding: 8px 12px;
+  border-top: 3px solid var(--orange);
+  background: #000;
+}
+
+.command-row {
+  height: 42px;
+  border: 2px solid var(--orange);
+}
+
+.command-chevron,
+.execute-button {
+  background: var(--orange);
+}
+
+@keyframes reference-stripe {
+  to {
+    background-position: -440px 0;
+  }
+}
+
+@keyframes reference-spine {
+  to {
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+
+@keyframes reference-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes reference-blink {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes reference-scroll {
+  to {
+    transform: translateX(-190px);
+  }
+}
+
+@keyframes tsunami-field-enter {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(1.6);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-90deg) scale(1);
+  }
+}
+
+@keyframes tsunami-placard-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+
+@media (max-width: 1180px) {
+  .telemetry {
+    display: none;
+  }
+
+  .operations-map {
+    inset: 118px 320px 120px;
+  }
+
+  .transcript-card,
+  .impact-card {
+    right: 12px;
+  }
+
+  .system-ribbon {
+    right: 12px;
+  }
+
+  .ews-rib-layout {
+    gap: 4px;
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .ews-rib-layout__branch:nth-child(n + 5) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-long-hex,
+  .black-warning-pair img,
+  .reference-data-hex,
+  .yellow-warning-pair img,
+  .tsunami-dossier,
+  .tsunami-placard {
+    opacity: 1;
+  }
+}

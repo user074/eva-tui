@@ -25,6 +25,8 @@ export interface ConnectOptions {
   cwd: string;
   model?: string;
   codexBin?: string;
+  clientName?: string;
+  clientTitle?: string;
 }
 
 export interface ConnectedThread {
@@ -88,9 +90,9 @@ export class CodexClient extends EventEmitter {
 
     await this.request("initialize", {
       clientInfo: {
-        name: "eva_tui",
-        title: "EVA TUI",
-        version: "0.2.0",
+        name: options.clientName ?? "eva_tui",
+        title: options.clientTitle ?? "EVA TUI",
+        version: "0.5.0",
       },
       capabilities: {},
     });
@@ -177,7 +179,7 @@ export class CodexClient extends EventEmitter {
 
   dispose(): void {
     this.disposed = true;
-    this.rejectPending(new Error("EVA TUI closed."));
+    this.rejectPending(new Error("EVA client closed."));
     const child = this.child;
     this.child = undefined;
     if (child && !child.killed) {

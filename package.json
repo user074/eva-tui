@@ -1,7 +1,7 @@
 {
   "name": "eva-tui",
   "version": "0.5.0",
-  "description": "An EVA-inspired, functional terminal client for Codex.",
+  "description": "EVA-inspired terminal and local visual consoles for Codex.",
   "type": "module",
   "bin": {
     "eva": "dist/cli.js"
@@ -29,7 +29,9 @@
     "codex",
     "tui",
     "ink",
-    "terminal"
+    "terminal",
+    "visual-console",
+    "dashboard"
   ],
   "license": "Apache-2.0",
   "dependencies": {

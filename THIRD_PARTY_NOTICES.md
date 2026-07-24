@@ -14,6 +14,6 @@ Selected warning, stripe, hex, and station-blade assets in
 The complete upstream license is included at
 `assets/ews-concept-new/LICENSE`.
 
-EVA TUI modifies the assets through composition, resizing, layout, and
-terminal-specific rendering. The upstream project is a visual reference and
-is not affiliated with or responsible for EVA TUI.
+EVA composes the assets through resizing, responsive layout, browser rendering,
+and terminal-specific rendering. The upstream project is a visual reference
+and is not affiliated with or responsible for EVA.
