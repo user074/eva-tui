@@ -126,6 +126,11 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
     ["dynamicToolCall", "mcpToolCall", "webSearch", "imageView"].includes(item.type),
   );
   const agents = state.activity.filter((item) => item.type === "collabAgentToolCall");
+  const sync = synchronization(state);
+  const contextPercent =
+    state.tokens.contextWindow > 0
+      ? Math.round((state.tokens.total / state.tokens.contextWindow) * 100)
+      : 0;
 
   const stations: Station[] = [
     {
@@ -148,6 +153,62 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
       status: audioStatus,
       trace: traceForStatuses([audioStatus === "OFF" ? "waiting" : "active"]),
       eventCount: audioStatus === "OFF" ? 0 : 1,
+    },
+    {
+      id: "thread",
+      label: "THREAD CORE",
+      detail: state.threadId ? state.threadId.slice(0, 12) : "UNASSIGNED",
+      status:
+        state.turn === "failed"
+          ? "FAILED"
+          : state.turn === "running"
+            ? "ACTIVE"
+            : state.connection === "online"
+              ? "READY"
+              : "STANDBY",
+      trace: traceForStatuses([state.turn]),
+      eventCount: state.transcript.length,
+    },
+    {
+      id: "plan",
+      label: "PLAN SYNC",
+      detail: `${sync.completed}/${sync.total} STEPS`,
+      status:
+        sync.total === 0
+          ? "STANDBY"
+          : sync.percent === 100
+            ? "COMPLETE"
+            : state.turn === "running"
+              ? "ACTIVE"
+              : "WAITING",
+      trace: traceForStatuses(state.plan.map((step) => step.status)),
+      eventCount: sync.total,
+    },
+    {
+      id: "context",
+      label: "CONTEXT",
+      detail: `${contextPercent}% WINDOW`,
+      status: contextPercent >= 85 ? "CAUTION" : "NOMINAL",
+      trace: traceForStatuses([contextPercent >= 85 ? "running" : "ready"]),
+      eventCount: state.tokens.total,
+    },
+    {
+      id: "diff",
+      label: "DIFF FIELD",
+      detail: `+${state.diff.additions}/-${state.diff.deletions}`,
+      status: state.diff.files.length > 0 ? "CHANGED" : "CLEAN",
+      trace: traceForStatuses([
+        state.diff.files.length > 0 ? "running" : "ready",
+      ]),
+      eventCount: state.diff.files.length,
+    },
+    {
+      id: "approval",
+      label: "APPROVAL GATE",
+      detail: "OPERATOR AUTHORIZATION",
+      status: state.approval ? "AWAITING" : "READY",
+      trace: traceForStatuses([state.approval ? "running" : "ready"]),
+      eventCount: state.approval ? 1 : 0,
     },
     ...state.mcp.map(mcpStation),
   ];

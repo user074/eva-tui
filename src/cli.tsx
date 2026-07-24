@@ -7,6 +7,10 @@ import { render } from "ink";
 
 import { App, type AppProps } from "./app.js";
 import { extractYoutubeVideoId } from "./audio/youtube.js";
+import {
+  supportsKittyGraphicsEnvironment,
+  type GraphicsMode,
+} from "./graphics/kitty.js";
 
 interface CliOptions extends AppProps {
   help: boolean;
@@ -28,6 +32,7 @@ function parseArgs(argv: string[]): CliOptions {
   let codexBin: string | undefined;
   let musicPath = process.env.EVA_TUI_MUSIC;
   let youtubeUrl = process.env.EVA_TUI_YOUTUBE;
+  let graphicsMode = (process.env.EVA_TUI_GRAPHICS ?? "auto") as GraphicsMode;
   let audioOn = false;
   let help = false;
 
@@ -49,6 +54,8 @@ function parseArgs(argv: string[]): CliOptions {
       musicPath = takeValue(args, index, "--music");
     } else if (argument === "--youtube") {
       youtubeUrl = takeValue(args, index, "--youtube");
+    } else if (argument === "--graphics") {
+      graphicsMode = takeValue(args, index, "--graphics") as GraphicsMode;
     } else {
       throw new Error(`Unknown argument: ${argument ?? ""}`);
     }
@@ -60,10 +67,14 @@ function parseArgs(argv: string[]): CliOptions {
   if (youtubeUrl) {
     extractYoutubeVideoId(youtubeUrl);
   }
+  if (!["auto", "kitty", "text"].includes(graphicsMode)) {
+    throw new Error("--graphics must be auto, kitty, or text.");
+  }
 
   return {
     cwd: resolve(cwd),
     audioOn,
+    graphicsMode,
     help,
     ...(model ? { model } : {}),
     ...(codexBin ? { codexBin } : {}),
@@ -84,6 +95,7 @@ Options:
   --codex <path>     Codex binary to launch (default: codex)
   --music <path>     User-supplied audio file; never copied into the project
   --youtube <url>    Official YouTube companion-player URL
+  --graphics <mode>  auto, kitty (Tier 3), or text (default: auto)
   --audio            Start audio immediately (off by default)
   -h, --help         Show this help
 
@@ -109,6 +121,21 @@ async function main(): Promise<void> {
   }
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error("EVA TUI requires an interactive terminal.");
+  }
+  if (
+    options.graphicsMode === "kitty" &&
+    !supportsKittyGraphicsEnvironment()
+  ) {
+    const program = process.env.TERM_PROGRAM || "unknown";
+    const term = process.env.TERM || "unknown";
+    throw new Error(
+      [
+        "Tier 3 graphics were requested, but this terminal does not advertise",
+        "Kitty graphics support.",
+        `Detected TERM_PROGRAM=${program}, TERM=${term}.`,
+        "Open EVA TUI inside Kitty, Ghostty, or WezTerm, or use --graphics text.",
+      ].join(" "),
+    );
   }
 
   const instance = render(<App {...options} />, {

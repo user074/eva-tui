@@ -18,10 +18,23 @@ keyboard ──> EVA TUI (Ink/React) ──JSONL──> codex app-server ──>
                  └── optional local audio player
 ```
 
-## Version 0.3
+## Version 0.5
 
 - Starts a new Codex thread in the selected workspace.
 - Streams Codex responses into the thread spine.
+- Adds a Tier 3 Kitty-graphics backend that rasterizes high-resolution warning
+  compositions and anchors them inside the Ink layout with Unicode image
+  placeholders.
+- Grounds the earthquake, tsunami, and station screens in the actual
+  organization of `ews-concept-new`: earthquake ticker bands and a central
+  hex cluster; a tiled tsunami warning field, six placards, and an information
+  dossier; and multi-spine station ribs with skewed status blades.
+- Includes selected, attributed upstream visual assets under their modified
+  MIT license rather than substituting unrelated wave or radar imagery.
+- Retains a portable terminal cell-canvas renderer with a 2×4 Braille-dot
+  pixel grid as the automatic fallback.
+- Runs active warning and station animation at approximately 11 FPS while
+  reducing the refresh rate for idle scenes.
 - Uses an operations-first command-center screen instead of making chat the
   primary canvas.
 - Provides Operations, Stations, Impact, and Transcript scenes.
@@ -49,6 +62,9 @@ keyboard ──> EVA TUI (Ink/React) ──JSONL──> codex app-server ──>
 - For local-file or generated audio: `afplay` on macOS, or `mpv`, `ffplay`,
   `paplay`, or `aplay`.
 - For YouTube audio: a browser with JavaScript enabled.
+- For Tier 3 graphics: Kitty 0.28+ or another terminal with Kitty graphics
+  Unicode-placeholder support. Kitty, Ghostty, and WezTerm are detected in
+  automatic mode.
 
 ## Install and run
 
@@ -79,8 +95,11 @@ eva --music "/path/to/your/licensed-track.mp3"
 eva --music "/path/to/your/licensed-track.mp3" --audio
 eva --youtube "https://music.youtube.com/watch?v=3BqrH0BzqSo"
 eva --youtube "https://music.youtube.com/watch?v=3BqrH0BzqSo" --audio
+eva --graphics kitty
+eva --graphics text
 EVA_TUI_MUSIC="/path/to/track.wav" eva
 EVA_TUI_YOUTUBE="https://music.youtube.com/watch?v=3BqrH0BzqSo" eva
+EVA_TUI_GRAPHICS=kitty eva
 ```
 
 Audio can be toggled at any time with `Ctrl-G` or by entering `/music`.
@@ -115,6 +134,30 @@ Slash commands:
 Simulation screens are fixture-driven and always marked
 `試験 / SIMULATION`. They do not start a Codex turn or modify the workspace.
 
+## Terminal graphics
+
+`--graphics auto` is the default. Outside tmux it enables the Tier 3 renderer
+when EVA TUI detects Kitty, Ghostty, or WezTerm; otherwise it selects the
+portable text renderer.
+
+Tier 3 builds each scene as a high-resolution SVG composition, rasterizes it
+to a compressed PNG, transfers the PNG with the Kitty graphics protocol, creates
+a virtual image placement, and prints ordinary Unicode placeholder cells
+inside the Ink tree. That last step matters: Ink can continue to own layout,
+resizing, and alternate-screen cleanup while the terminal draws the image at
+native pixel quality.
+
+Use `--graphics kitty` to request the backend or `--graphics text` to disable
+it. A forced request exits with an actionable diagnostic when the current
+terminal does not identify itself as Kitty-compatible, instead of exposing the
+Unicode placeholder cells. Automatic mode stays on text inside tmux because
+Kitty passthrough must be enabled explicitly; after configuring tmux
+passthrough, request Kitty mode.
+
+The fallback treats each terminal cell as a 2×4 drawing surface using Unicode
+Braille dots. At 100×30 cells, scenes use an effective 200×120 terminal-pixel
+buffer with true-color layers, clipped lines, circles, and filled polygons.
+
 ## Music and visual references
 
 `E01_EWS_Amano&Kosei` is a commercially released recording. It is not
@@ -143,9 +186,13 @@ The supplied `E01_EWS_Amano&Kosei` upload currently has this restriction.
 The interface takes broad inspiration from late-1990s anime command-center
 graphics and community concepts such as
 [ews-concept-new](https://github.com/bagusindrayana/ews-concept-new) and
-[nerv-ui](https://github.com/mdrbx/nerv-ui). No logos, screenshots, music,
-fonts, or other assets from those works are included. EVA TUI is not
-affiliated with or endorsed by their rights holders.
+[nerv-ui](https://github.com/mdrbx/nerv-ui). Version 0.5 includes selected
+warning, stripe, hex, and station-blade assets from `ews-concept-new` under its
+modified MIT license. Attribution and the complete upstream license are in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+`assets/ews-concept-new/LICENSE`. No anime screenshots, logos, commercial
+fonts, or music are included. EVA TUI is not affiliated with or endorsed by
+the referenced projects or their rights holders.
 
 ## Why the boundary matters
 
@@ -155,7 +202,7 @@ authentication, sandboxing, tools, and model behavior. Protocol handling is
 isolated in `src/codex`, so a future Codex protocol change can be adapted
 without rewriting the UI.
 
-The app-server surface is still evolving. Version 0.3 deliberately supports
+The app-server surface is still evolving. Version 0.5 deliberately supports
 the core thread/turn path and approvals first. Rich `requestUserInput`, MCP
 elicitation forms, history/resume, and dynamic client-hosted tools are planned
 follow-ups; unsupported server requests receive a clear protocol error rather

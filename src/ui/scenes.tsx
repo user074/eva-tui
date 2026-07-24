@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { Box, Text } from "ink";
 
+import type { GraphicsBackend } from "../graphics/kitty.js";
 import type { AppState, PendingApproval, PlanStep } from "../state/model.js";
+import { CellCanvasView } from "./cell-canvas-view.js";
 import { Panel, Transcript } from "./components.js";
 import {
   activityTrace,
@@ -12,8 +14,13 @@ import {
   shortLabel,
   synchronization,
   type Scene,
-  type Station,
 } from "./operations-model.js";
+import {
+  earthquakeGraphic,
+  stationGraphic,
+  tsunamiGraphic,
+} from "./scene-graphics.js";
+import { TerminalGraphicView } from "./terminal-graphic-view.js";
 import { statusColor, theme } from "./theme.js";
 
 function rail(phase: number, width: number, danger = false): string {
@@ -271,51 +278,22 @@ export function OperationsScreen({
   );
 }
 
-function StationNode({
-  station,
-  side,
-  width,
-  selected,
-}: {
-  station: Station;
-  side: "left" | "right";
-  width: number;
-  selected: boolean;
-}): ReactNode {
-  const color = statusColor(station.status);
-  const label = shortLabel(station.label, Math.max(8, width - 8));
-  return (
-    <Box width={width} flexDirection="column" alignItems={side === "left" ? "flex-end" : "flex-start"}>
-      <Text
-        color={selected ? theme.black : color}
-        bold
-        {...(selected ? { backgroundColor: color } : {})}
-      >
-        {side === "left"
-          ? `${label} ${stateGlyph(station.status)} ◢`
-          : `◣ ${stateGlyph(station.status)} ${label}`}
-      </Text>
-      <Text color={theme.dim}>
-        {side === "left"
-          ? `${station.trace} ${shortLabel(station.status, 10)}`
-          : `${shortLabel(station.status, 10)} ${station.trace}`}
-      </Text>
-    </Box>
-  );
-}
-
 export function StationsScreen({
   state,
   audioStatus,
   columns,
   rows,
   selectedIndex,
+  phase,
+  graphicsBackend,
 }: {
   state: AppState;
   audioStatus: string;
   columns: number;
   rows: number;
   selectedIndex: number;
+  phase: number;
+  graphicsBackend: GraphicsBackend;
 }): ReactNode {
   const stations = buildStations(state, audioStatus);
   const normalizedSelection =
@@ -324,101 +302,48 @@ export function StationsScreen({
       : ((selectedIndex % stations.length) + stations.length) % stations.length;
   const selected = stations[normalizedSelection];
   const ready = stations.filter((station) =>
-    ["ready", "complete", "online", "active", "playing"].some((value) =>
+    ["ready", "complete", "online", "active", "playing", "nominal", "clean"].some((value) =>
       station.status.toLowerCase().includes(value),
     ),
   ).length;
-  const pairs = Array.from({ length: Math.ceil(stations.length / 2) }, (_, index) => [
-    stations[index * 2],
-    stations[index * 2 + 1],
-  ] as const);
-  const wide = columns >= 76;
-  const compact = rows < 30;
-  const nodeWidth = Math.max(24, Math.floor((columns - 15) / 2));
+  const canvasColumns = Math.max(24, columns - 6);
+  const canvasRows =
+    graphicsBackend === "kitty"
+      ? Math.max(8, Math.min(24, rows - 12))
+      : Math.max(5, Math.min(13, rows - 14));
+  const frame = stationGraphic(
+    stations,
+    normalizedSelection,
+    canvasColumns,
+    canvasRows,
+    phase,
+  );
 
   return (
     <Box flexDirection="column" flexGrow={1}>
       <Box borderStyle="double" borderColor={theme.orange} paddingX={1} justifyContent="space-between">
-        <Text color={theme.orange} bold>観測所網 / STATION MATRIX</Text>
+        <Text color={theme.orange} bold>
+          観測所網 / {graphicsBackend === "kitty" ? "TIER 3 RIB MATRIX" : "BRAILLE STATION MATRIX"}
+        </Text>
         <Text color={ready === stations.length ? theme.green : theme.amber} bold>
           {ready.toString().padStart(2, "0")} / {stations.length.toString().padStart(2, "0")} NOMINAL
         </Text>
       </Box>
 
-      {wide ? (
-        <Box flexDirection="column" alignItems="center" flexGrow={1} paddingTop={1}>
-          <Text color={theme.orange} bold>┏━ CODEX SIGNAL SPINE ━┓</Text>
-          {pairs.map(([left, right], index) => (
-            <Box key={`${left?.id ?? "none"}-${right?.id ?? "none"}`} alignItems="center">
-              {left && !compact ? (
-                <StationNode
-                  station={left}
-                  side="left"
-                  width={nodeWidth}
-                  selected={left.id === selected?.id}
-                />
-              ) : left ? (
-                <Box width={nodeWidth} justifyContent="flex-end">
-                  <Text
-                    color={left.id === selected?.id ? theme.black : statusColor(left.status)}
-                    bold
-                    {...(left.id === selected?.id
-                      ? { backgroundColor: statusColor(left.status) }
-                      : {})}
-                  >
-                    {shortLabel(left.label, nodeWidth - 5)} {stateGlyph(left.status)} ◢
-                  </Text>
-                </Box>
-              ) : (
-                <Box width={nodeWidth} />
-              )}
-              <Text color={index % 2 === 0 ? theme.orange : theme.purple}>
-                ━━━╲┃╱━━━
-              </Text>
-              {right && !compact ? (
-                <StationNode
-                  station={right}
-                  side="right"
-                  width={nodeWidth}
-                  selected={right.id === selected?.id}
-                />
-              ) : right ? (
-                <Box width={nodeWidth}>
-                  <Text
-                    color={right.id === selected?.id ? theme.black : statusColor(right.status)}
-                    bold
-                    {...(right.id === selected?.id
-                      ? { backgroundColor: statusColor(right.status) }
-                      : {})}
-                  >
-                    ◣ {stateGlyph(right.status)} {shortLabel(right.label, nodeWidth - 5)}
-                  </Text>
-                </Box>
-              ) : (
-                <Box width={nodeWidth} />
-              )}
-            </Box>
-          ))}
-          <Text color={theme.orange} bold>┗━━━━━━━┻━━━━━━━┛</Text>
-        </Box>
-      ) : (
-        <Box flexDirection="column" paddingX={1}>
-          {stations.map((station) => (
-            <Box key={station.id} justifyContent="space-between">
-              <Text
-                color={station.id === selected?.id ? theme.black : statusColor(station.status)}
-                bold
-                {...(station.id === selected?.id
-                  ? { backgroundColor: statusColor(station.status) }
-                  : {})}
-              >
-                {stateGlyph(station.status)} {shortLabel(station.label, 18)}
-              </Text>
-              <Text color={theme.dim}>{station.trace} {station.status}</Text>
-            </Box>
-          ))}
-        </Box>
-      )}
+      <Box flexGrow={1} alignItems="center" justifyContent="center">
+        {graphicsBackend === "kitty" ? (
+          <TerminalGraphicView
+            scene="stations"
+            columns={canvasColumns}
+            rows={canvasRows}
+            stations={stations}
+            selectedIndex={normalizedSelection}
+            fallback={<CellCanvasView frame={frame} />}
+          />
+        ) : (
+          <CellCanvasView frame={frame} />
+        )}
+      </Box>
       {selected ? (
         <Box borderStyle="single" borderColor={statusColor(selected.status)} paddingX={1} flexShrink={0}>
           <Text color={statusColor(selected.status)} bold>
@@ -626,15 +551,50 @@ export function EarthquakeOverlay({
   phase,
   simulation,
   columns,
+  rows,
+  graphicsBackend,
 }: {
   state: AppState;
   phase: number;
   simulation: boolean;
   columns: number;
+  rows: number;
+  graphicsBackend: GraphicsBackend;
 }): ReactNode {
   const failed = [...state.activity]
     .reverse()
     .find((item) => item.status.toLowerCase().includes("fail"));
+  const graphic = earthquakeGraphic(
+    Math.max(28, Math.min(58, columns - 10)),
+    rows < 28 ? 5 : 8,
+    phase,
+  );
+  if (graphicsBackend === "kitty") {
+    const graphicColumns = Math.max(24, columns - 2);
+    const graphicRows = Math.max(8, rows - 3);
+    return (
+      <Box flexDirection="column" height={rows} justifyContent="space-between">
+        <Text backgroundColor={simulation ? theme.amber : theme.red} color={theme.black} bold>
+          {simulation
+            ? " 試験 / SIMULATION — NO WORKSPACE ACTION "
+            : " 警告 / OPERATION FAILURE DETECTED "}
+        </Text>
+        <TerminalGraphicView
+          scene="earthquake"
+          columns={graphicColumns}
+          rows={graphicRows}
+          incidentDetail={
+            simulation
+              ? "Fixture command failure detected in the simulated execution layer."
+              : state.diagnostic || failed?.label || "The active turn ended in a failed state."
+          }
+          simulation={simulation}
+          fallback={<CellCanvasView frame={graphic} />}
+        />
+        <Text color={theme.dim}>[ESC/X] DISMISS · KITTY GPU LAYER · INCIDENT INPUT LOCKED</Text>
+      </Box>
+    );
+  }
   return (
     <AlertFrame
       title="警 告 / EARTHQUAKE"
@@ -645,6 +605,7 @@ export function EarthquakeOverlay({
       footer="[ESC/X] DISMISS   [TAB] LOCKED DURING INCIDENT"
     >
       <Box flexDirection="column" alignItems="center">
+        <CellCanvasView frame={graphic} />
         <Box>
           <Box borderStyle="double" borderColor={theme.red} paddingX={2} flexDirection="column" alignItems="center">
             <Text color={theme.dim}>{simulation ? "MAGNITUDE" : "TURN STATUS"}</Text>
@@ -673,29 +634,49 @@ export function EarthquakeOverlay({
 export function TsunamiOverlay({
   phase,
   columns,
+  rows,
+  graphicsBackend,
 }: {
   phase: number;
   columns: number;
+  rows: number;
+  graphicsBackend: GraphicsBackend;
 }): ReactNode {
+  const graphic = tsunamiGraphic(
+    Math.max(30, Math.min(64, columns - 10)),
+    rows < 28 ? 8 : 12,
+    phase,
+  );
+  if (graphicsBackend === "kitty") {
+    const graphicColumns = Math.max(24, columns - 2);
+    const graphicRows = Math.max(8, rows - 3);
+    return (
+      <Box flexDirection="column" height={rows} justifyContent="space-between">
+        <Text backgroundColor={theme.amber} color={theme.black} bold>
+          {" 試験 / SIMULATION — NO WORKSPACE ACTION "}
+        </Text>
+        <TerminalGraphicView
+          scene="tsunami"
+          columns={graphicColumns}
+          rows={graphicRows}
+          fallback={<CellCanvasView frame={graphic} />}
+        />
+        <Text color={theme.dim}>[ESC/X] DISMISS · KITTY GPU LAYER · FIXTURE NODES ONLY</Text>
+      </Box>
+    );
+  }
   return (
     <AlertFrame
-      title="津 波 / PROPAGATION ALERT"
-      subtitle="CHANGE BLAST-RADIUS TEST"
+      title="津 波 / TSUNAMI ALERT"
+      subtitle="CHANGE PROPAGATION TEST"
       phase={phase}
       columns={columns}
       simulation
       footer="[ESC/X] DISMISS   TEST NODES ARE FIXTURES"
     >
       <Box flexDirection="column" alignItems="center">
-        <Text color={theme.red}>              ◇ src/core.ts</Text>
-        <Text color={theme.red}>          ╱━━━━━━╋━━━━━━╲</Text>
-        <Text color={theme.amber}>    ◇ api.ts    ┃    ◇ state.ts</Text>
-        <Text color={theme.amber}>       ╲        ┃        ╱</Text>
-        <Text color={theme.orange}>    WAVE 01 ━━━╋━━━ DIRECT DEPENDENTS</Text>
-        <Text color={theme.orange}>            ╱  ┃  ╲</Text>
-        <Text color={theme.green}>      ◇ cli.ts ◇ tests ◇ ui.tsx</Text>
-        <Text color={theme.green}>    WAVE 02 ━━━╋━━━ VERIFICATION TARGETS</Text>
-        <Text color={theme.red}>POTENTIAL PROPAGATION · 06 FIXTURE NODES · 02 WAVES</Text>
+        <CellCanvasView frame={graphic} />
+        <Text color={theme.red}>POTENTIAL PROPAGATION · 06 FIXTURE WARNING MODULES</Text>
       </Box>
     </AlertFrame>
   );

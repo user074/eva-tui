@@ -3,6 +3,10 @@ import { Box, Text, useApp, useInput, useStdout } from "ink";
 
 import { AudioDirector } from "./audio/director.js";
 import { CodexClient } from "./codex/client.js";
+import {
+  resolveGraphicsBackend,
+  type GraphicsMode,
+} from "./graphics/kitty.js";
 import type {
   ApprovalDecision,
   CodexNotification,
@@ -36,6 +40,7 @@ export interface AppProps {
   musicPath?: string;
   youtubeUrl?: string;
   audioOn: boolean;
+  graphicsMode?: GraphicsMode;
 }
 
 function useTerminalSize(): { columns: number; rows: number } {
@@ -72,6 +77,10 @@ export function App(props: AppProps) {
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [failureDismissed, setFailureDismissed] = useState(false);
   const [stationSelection, setStationSelection] = useState(0);
+  const graphicsBackend = useMemo(
+    () => resolveGraphicsBackend(props.graphicsMode ?? "auto"),
+    [props.graphicsMode],
+  );
   const messageCounter = useRef(0);
   const client = useMemo(() => new CodexClient(), []);
   const audio = useMemo(
@@ -88,11 +97,21 @@ export function App(props: AppProps) {
     client.dispose();
   }, [audio, client]);
 
+  const animationActive =
+    state.approval !== null ||
+    simulation !== null ||
+    (state.turn === "failed" && !failureDismissed) ||
+    state.turn === "running" ||
+    scene === "stations";
+
   useEffect(() => {
-    const timer = setInterval(() => setPhase((value) => (value + 1) % 14), 180);
+    const timer = setInterval(
+      () => setPhase((value) => (value + 1) % 120),
+      animationActive ? 90 : 600,
+    );
     timer.unref();
     return () => clearInterval(timer);
-  }, []);
+  }, [animationActive]);
 
   useEffect(() => {
     if (state.turn === "running") {
@@ -115,7 +134,7 @@ export function App(props: AppProps) {
       } else {
         client.respondWithError(
           request.id,
-          `EVA TUI 0.3 does not yet implement ${request.method}.`,
+          `EVA TUI 0.5 does not yet implement ${request.method}.`,
         );
         dispatch({
           type: "diagnostic",
@@ -365,6 +384,8 @@ export function App(props: AppProps) {
           phase={phase}
           simulation={simulation === "earthquake"}
           columns={size.columns}
+          rows={size.rows}
+          graphicsBackend={graphicsBackend}
         />
       </Box>
     );
@@ -373,7 +394,12 @@ export function App(props: AppProps) {
   if (simulation === "tsunami") {
     return (
       <Box flexDirection="column" paddingX={1} height={size.rows}>
-        <TsunamiOverlay phase={phase} columns={size.columns} />
+        <TsunamiOverlay
+          phase={phase}
+          columns={size.columns}
+          rows={size.rows}
+          graphicsBackend={graphicsBackend}
+        />
       </Box>
     );
   }
@@ -393,6 +419,8 @@ export function App(props: AppProps) {
           columns={size.columns}
           rows={size.rows}
           selectedIndex={stationSelection}
+          phase={phase}
+          graphicsBackend={graphicsBackend}
         />
       ) : null}
       {scene === "impact" ? (

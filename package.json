@@ -1,6 +1,6 @@
 {
   "name": "eva-tui",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "An EVA-inspired, functional terminal client for Codex.",
   "type": "module",
   "bin": {
@@ -8,8 +8,10 @@
   },
   "files": [
     "dist",
+    "assets",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -30,7 +32,8 @@
   "license": "Apache-2.0",
   "dependencies": {
     "ink": "^7.1.1",
-    "react": "^19.2.0"
+    "react": "^19.2.0",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

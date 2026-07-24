@@ -23,11 +23,22 @@ export function statusColor(status: string): string {
   if (
     normalized.includes("complete") ||
     normalized.includes("success") ||
-    normalized.includes("ready")
+    normalized.includes("ready") ||
+    normalized.includes("online") ||
+    normalized.includes("active") ||
+    normalized.includes("playing") ||
+    normalized.includes("nominal") ||
+    normalized.includes("clean")
   ) {
     return theme.green;
   }
-  if (normalized.includes("run") || normalized.includes("progress")) {
+  if (
+    normalized.includes("run") ||
+    normalized.includes("progress") ||
+    normalized.includes("changed") ||
+    normalized.includes("awaiting") ||
+    normalized.includes("caution")
+  ) {
     return theme.orange;
   }
   return theme.dim;
