@@ -6,10 +6,9 @@ import { TuiFrame, truncateTuiText, tuiTextWidth } from "./tui-frame.js";
 import {
   drawAlertPlacard,
   drawDossier,
+  drawFilledRectPanel,
   drawHazardRail,
-  drawHexModule,
-  drawLongHex,
-  drawParallelogram,
+  drawRectStatusBlock,
   drawWarningField,
 } from "./tui-primitives.js";
 
@@ -137,7 +136,7 @@ export function buildEarthquakeFrame(
   const sideReserve = compact ? 4 : 34;
   const headerWidth = Math.min(46, Math.max(32, frame.width - sideReserve));
   const headerX = Math.floor((frame.width - headerWidth) / 2);
-  drawLongHex(frame, {
+  drawFilledRectPanel(frame, {
     x: headerX,
     y: headerY,
     width: headerWidth,
@@ -146,31 +145,36 @@ export function buildEarthquakeFrame(
     title: "WARNING / GEMPA BUMI",
     subtitle: "EARTHQUAKE DETECTED",
     fill: theme.red,
-    border: theme.red,
+    border: theme.black,
     text: theme.black,
+    railInset: 5,
   });
 
   if (!compact) {
     const warningWidth = 13;
-    drawHexModule(frame, {
+    drawFilledRectPanel(frame, {
       x: headerX - warningWidth - 2,
       y: headerY,
       width: warningWidth,
       height: headerHeight,
       title: "WARNING",
       subtitle: "▲",
-      border: theme.red,
-      fill: theme.black,
+      border: theme.black,
+      fill: theme.amber,
+      text: theme.black,
+      railInset: 2,
     });
-    drawHexModule(frame, {
+    drawFilledRectPanel(frame, {
       x: headerX + headerWidth + 2,
       y: headerY,
       width: warningWidth,
       height: headerHeight,
       title: "WARNING",
       subtitle: "▲",
-      border: theme.red,
-      fill: theme.black,
+      border: theme.black,
+      fill: theme.amber,
+      text: theme.black,
+      railInset: 2,
     });
   }
 
@@ -205,38 +209,41 @@ export function buildEarthquakeFrame(
     { color: theme.red },
   );
 
-  drawHexModule(frame, {
+  drawFilledRectPanel(frame, {
     x: groupX,
     y: dataY,
     width: moduleWidth,
     height: moduleHeight,
     title: "MAGNITUDE",
     subtitle: options.simulation ? "6.2 TEST" : "FAILURE",
-    border: theme.red,
+    border: theme.black,
     fill: theme.red,
     text: theme.black,
+    railInset: 2,
   });
-  drawHexModule(frame, {
+  drawFilledRectPanel(frame, {
     x: groupX + moduleWidth + gap,
     y: dataY + 1,
     width: moduleWidth,
     height: moduleHeight,
     title: "SYNC LINK",
     subtitle: options.simulation ? "FIXTURE" : "LOCKED",
-    border: theme.red,
-    fill: theme.red,
+    border: theme.black,
+    fill: theme.amber,
     text: theme.black,
+    railInset: 2,
   });
-  drawHexModule(frame, {
+  drawFilledRectPanel(frame, {
     x: groupX + (moduleWidth + gap) * 2,
     y: dataY,
     width: moduleWidth,
     height: moduleHeight,
     title: "DEPTH",
     subtitle: options.simulation ? "10 KM" : "TURN CORE",
-    border: theme.red,
+    border: theme.black,
     fill: theme.red,
     text: theme.black,
+    railInset: 2,
   });
 
   if (!compact && frame.height >= 25) {
@@ -306,7 +313,7 @@ export function buildTsunamiFrame(options: TsunamiFrameOptions): TuiFrame {
   const headerX = Math.floor((frame.width - headerWidth) / 2);
 
   drawWarningField(frame, motionPhase);
-  drawLongHex(frame, {
+  drawFilledRectPanel(frame, {
     x: headerX,
     y: 1,
     width: headerWidth,
@@ -315,8 +322,9 @@ export function buildTsunamiFrame(options: TsunamiFrameOptions): TuiFrame {
     title: "PERINGATAN DINI TSUNAMI",
     subtitle: "EARLY WARNING SYSTEM",
     fill: theme.red,
-    border: theme.amber,
+    border: theme.black,
     text: theme.black,
+    railInset: 5,
   });
 
   const dossierY = compact ? 7 : 8;
@@ -455,11 +463,11 @@ function drawStationNode(
   const side = index % 2 === 0 ? -1 : 1;
   const color = statusColor(station.status);
   const halfLane = Math.max(5, Math.floor(laneWidth / 2) - 1);
-  const bladeWidth = Math.max(6, Math.min(9, halfLane - 2));
-  const arm = Math.max(2, halfLane - bladeWidth);
+  const blockWidth = Math.max(6, Math.min(9, halfLane - 2));
+  const arm = Math.max(2, halfLane - blockWidth);
   const labelWidth = Math.max(4, halfLane);
   const label = truncateTuiText(station.label.toUpperCase(), labelWidth);
-  const bladeTone = color;
+  const blockTone = color;
 
   frame.put(spineX, y, selected ? "◆" : side < 0 ? "┫" : "┣", {
     color: selected ? theme.white : theme.orange,
@@ -467,8 +475,8 @@ function drawStationNode(
     blink: selected,
   });
   if (side < 0) {
-    const bladeX = spineX - arm - bladeWidth;
-    const connectorX = bladeX + bladeWidth - 1;
+    const blockX = spineX - arm - blockWidth;
+    const connectorX = blockX + blockWidth - 1;
     frame.hLine(connectorX, y, spineX - connectorX, "━", {
       color: selected ? theme.white : color,
     });
@@ -477,13 +485,15 @@ function drawStationNode(
       bold: true,
       blink: selected,
     });
-    drawParallelogram(
+    drawRectStatusBlock(
       frame,
-      bladeX,
+      blockX,
       y - 1,
-      bladeWidth,
+      blockWidth,
+      2,
       -1,
-      bladeTone,
+      blockTone,
+      selected ? theme.white : theme.amber,
     );
     const labelX = Math.max(laneX, spineX - tuiTextWidth(label));
     frame.text(labelX, y + 1, label, {
@@ -492,22 +502,24 @@ function drawStationNode(
       bold: selected,
     });
   } else {
-    const bladeX = spineX + arm + 1;
-    frame.hLine(spineX + 1, y, bladeX - spineX, "━", {
+    const blockX = spineX + arm + 1;
+    frame.hLine(spineX + 1, y, blockX - spineX, "━", {
       color: selected ? theme.white : color,
     });
-    frame.put(bladeX, y, selected ? "◆" : "◇", {
+    frame.put(blockX, y, selected ? "◆" : "◇", {
       color: selected ? theme.white : color,
       bold: true,
       blink: selected,
     });
-    drawParallelogram(
+    drawRectStatusBlock(
       frame,
-      bladeX,
+      blockX,
       y - 1,
-      bladeWidth,
+      blockWidth,
+      2,
       1,
-      bladeTone,
+      blockTone,
+      selected ? theme.white : theme.amber,
     );
     frame.text(spineX + 1, y + 1, label, {
       color: selected ? theme.white : color,

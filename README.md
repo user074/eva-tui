@@ -46,14 +46,15 @@ loopback API.
   placeholders.
 - Grounds the earthquake, tsunami, and station screens in the actual
   organization of `ews-concept-new`: earthquake ticker bands and a central
-  hex cluster; a tiled tsunami warning field, six placards, and an information
-  dossier; and multi-spine station ribs with skewed status blades.
+  alert cluster; a tiled tsunami warning field, six placards, and an information
+  dossier; and multi-spine station ribs with state-bearing status blocks.
 - Includes selected, attributed upstream visual assets under their modified
   MIT license rather than substituting unrelated wave or radar imagery.
 - Adds a portable semantic TUI renderer for Apple Terminal and other standard
-  terminals. It constructs hazard rails, long-hex panels, alert placards,
-  dossiers, linked ribs, solid color chassis, and real text directly in
-  terminal cells; it never downsamples the Kitty image into block pixels.
+  terminals. Its active earthquake and station scenes use gapless
+  background-filled alert plates and rectangular status blocks alongside
+  hazard rails, placards, dossiers, linked ribs, and real text; it never
+  downsamples the Kitty image into block pixels.
 - Runs geometry as a staged reveal, then keeps only operational rails and
   signals moving on a low-frequency scene-local clock. Incremental line
   rendering prevents those updates from repainting unchanged output.
@@ -219,14 +220,13 @@ passthrough, request Kitty mode.
 
 The portable renderer is a separate semantic composition of the same scene
 hierarchy. It uses true-color ANSI styling, real selectable text, Unicode
-chassis lines, East Asian double-width labels, and discrete animation. A small
-vector-to-cell stage ports the actual `long_shape.svg`, `hex_shape.svg`,
-`warning_shape_black.svg`, and skew-rectangle proportions into filled
-terminal surfaces. Each source shape is reinterpreted as stepped filled
-spans, diagonal cap masks, and connecting box-drawing seams; it is not sampled
-as square pixels. The screen is never converted into a block-pixel screenshot.
-This gives Apple Terminal a sharp operational layout while keeping labels
-selectable and functional.
+chassis lines, East Asian double-width labels, and discrete animation.
+Large functional containers are painted as rectangular cell backgrounds so
+terminal font padding cannot create seams. Reference SVG masks remain
+available for compact motifs and the tsunami composition, but the earthquake
+and station screens preserve their hierarchy and color mass without forcing
+polygon silhouettes into a low-resolution grid. The screen is never converted
+into a block-pixel screenshot.
 
 The reusable visual vocabulary, reference mapping, responsive rules, animation
 rules, and anti-patterns are documented in

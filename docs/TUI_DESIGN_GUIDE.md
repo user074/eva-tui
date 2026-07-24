@@ -14,10 +14,10 @@ image reduced to colored pixels.
 The visual references use geometry semantically:
 
 - hazard rails establish a whole-screen interruption;
-- long hexagons carry the dominant event name;
-- small hexagons contain measurements or coupled system states;
+- solid alert plates carry the dominant event name;
+- compact rectangular blocks contain measurements or coupled system states;
 - vertical spines express topology and order;
-- blades expose the state of a station at the end of a connector;
+- filled status blocks expose station state at the end of a connector;
 - striped dossiers contain the actionable explanation;
 - repeating warning fields establish threat coverage rather than illustrating
   a literal earthquake or tsunami.
@@ -39,10 +39,11 @@ stacked fills:
 - the tsunami frame is a rounded black rectangle with filled stripe bars on
   all four edges.
 
-The terminal replacement follows that method. Use background color for the
-surface area, reserve glyphs such as `╱`, `╲`, `▄`, and `▀` for the silhouette
-or inset seam, and knock text into the filled surface. An outline-only version
-is not equivalent: it loses the large color masses that establish hierarchy.
+The terminal replacement follows that method without requiring the large
+containers to retain a polygon silhouette. Use background color for the full
+surface area, reserve glyphs for thin inset rails and compact warning motifs,
+and knock text into the filled surface. An outline-only version is not
+equivalent: it loses the large color masses that establish hierarchy.
 
 ## Reference mapping
 
@@ -52,9 +53,9 @@ The portable scenes follow the organization of
 ### Earthquake
 
 1. Top and bottom `EARTHQUAKE / 地震` hazard rails make the alert global.
-2. A centered red long-hex assembly carries the warning hierarchy.
-3. Paired side warning hexes reinforce the central assembly.
-4. Magnitude and depth hexes flank a lower synchronization coupler.
+2. A centered solid red plate carries the warning hierarchy.
+3. Paired amber warning blocks reinforce the central assembly.
+4. Red magnitude and depth blocks flank an amber synchronization coupler.
 5. Side `地震` placards anchor the lower cluster.
 6. A striped incident dossier gives the real failure or simulation detail.
 
@@ -63,7 +64,7 @@ The portable scenes follow the organization of
 1. A tiled `WARNING` hex field covers the screen. It is not a picture of a
    wave.
 2. Six `津波 / ALERT` placards occupy the left and right edge zones.
-3. A centered red long hex carries `PERINGATAN DINI TSUNAMI`.
+3. A centered solid red warning plate carries `PERINGATAN DINI TSUNAMI`.
 4. A black, striped dossier carries severity, real diff counts, propagation,
    and simulation status.
 5. Linked `NODE` channels give the dossier an operational lower section.
@@ -72,10 +73,10 @@ The portable scenes follow the organization of
 
 1. Several vertical ribs divide the available width.
 2. Stations alternate left and right from each rib.
-3. A thin connector terminates in a skew-like blade glyph.
-4. Blade color comes from recorded station state.
+3. A thin connector terminates in a two-row rectangular status block.
+4. Block color comes from recorded station state.
 5. A compact status/event code is attached below the node.
-6. Selection changes the blade chassis to white and exposes full detail in the
+6. Selection changes the block accent to white and exposes full detail in the
    inspector below the matrix.
 
 The supplemental `nerv-ui` references reinforce thin chassis borders, attached
@@ -88,12 +89,12 @@ poster-sized typography inside normal operational screens.
 | Primitive | Terminal construction | Meaning |
 | --- | --- | --- |
 | Hazard rail | background color, `/` and `\`, repeated text | global alert scope |
-| Long hex | red fill, black connecting seam, diagonal caps, real text | dominant event |
-| Data hex | filled color silhouette, label and value | measurement or coupled state |
+| Alert plate | solid red/amber background, inset black rails, real text | dominant event |
+| Data block | solid rectangular fill, label and value | measurement or coupled state |
 | Placard | rounded black chassis, amber caps, Kanji | distributed alert node |
 | Dossier | rounded box, tight `◢◤` / `◣◥` rails on all four edges, nested rows | actionable detail |
 | Warning field | repeated filled `WARNING` hex cells | spatial threat coverage |
-| Rib | `┃`, `┫`, `┣`, `━`, one-row filled skew blade | system topology |
+| Rib | `┃`, `┫`, `┣`, `━`, two-row filled status block | system topology |
 | Signal channel | label, animated `━─` span, target | propagation or progress |
 
 These primitives live in `src/ui/tui-primitives.ts`. Asset proportions and
@@ -180,7 +181,7 @@ Transcript displays have no application animation timer.
 
 Visual modules must bind to Codex data:
 
-- station blades use connection, turn, command, git, diff, tool, MCP, agent,
+- station blocks use connection, turn, command, git, diff, tool, MCP, agent,
   context, approval, and audio state;
 - station event codes use recorded event counts;
 - earthquake dossiers use the actual diagnostic or failed activity label;
@@ -196,20 +197,18 @@ The scene meaning is shared, but the renderers are separate:
 
 ```text
 Codex state
-    ├── source SVG geometry
-    │       └── semantic vector masks → ANSI + Unicode cells → every terminal
+    ├── semantic scene hierarchy
+    │       └── filled cells + compact SVG-derived motifs → every terminal
     └── SVG asset composition    → Kitty PNG placement       → capable terminals
 ```
 
 The portable renderer does not rasterize a complete SVG scene or screenshot.
-It takes the structural ratios from a small set of source polygon paths, then
-rebuilds each shape from terminal-native filled spans, inverted diagonal cap
-masks, and connecting box-drawing seams. Terminal cell aspect ratio determines whether a source
-element becomes one row or several; the 500×100 station blade, for example,
-is intentionally one cell row high. This keeps Apple Terminal output
-searchable and selectable while preserving the reference assets'
-silhouettes. Kitty assets may be richer, but both backends must preserve the
-same scene hierarchy and state labels.
+It retains the source layouts' hierarchy, color mass, connected topology, and
+warning rhythm. Large text-bearing containers become gapless rectangular cell
+fills; compact warning motifs may still use source-derived masks. This keeps
+Apple Terminal output searchable and selectable without asking font glyphs to
+form continuous polygon edges. Kitty assets may be richer, but both backends
+must preserve the same scene hierarchy and state labels.
 
 ## Anti-patterns
 

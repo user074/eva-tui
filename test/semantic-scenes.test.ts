@@ -8,7 +8,9 @@ import {
 } from "../src/ui/asset-cell-masks.js";
 import {
   denseDiagonalStripe,
+  drawFilledRectPanel,
   drawHorizontalTriangle,
+  drawRectStatusBlock,
   drawVerticalTriangle,
 } from "../src/ui/tui-primitives.js";
 import {
@@ -136,6 +138,39 @@ test("filled triangle primitives compose across multiple terminal rows", () => {
   assert.match(output, /▶/);
 });
 
+test("rectangular panels use gapless background fills and solid index tabs", () => {
+  const frame = new TuiFrame(30, 7, { background: "#090807" });
+  drawFilledRectPanel(frame, {
+    x: 1,
+    y: 1,
+    width: 18,
+    height: 5,
+    title: "WARNING",
+    subtitle: "ACTIVE",
+    fill: "#ff3b21",
+    border: "#090807",
+    text: "#090807",
+    railInset: 3,
+  });
+  drawRectStatusBlock(
+    frame,
+    21,
+    2,
+    8,
+    2,
+    -1,
+    "#2ee66b",
+    "#ffc247",
+  );
+  const cells = frame.rows().flatMap((row) => row);
+
+  assert.equal(frame.cell(1, 1)?.background, "#ff3b21");
+  assert.equal(frame.cell(18, 5)?.background, "#ff3b21");
+  assert.equal(frame.cell(21, 3)?.background, "#ffc247");
+  assert.equal(frame.cell(24, 3)?.background, "#2ee66b");
+  assert.ok(!cells.some((cell) => "◢◣◤◥".includes(cell.char)));
+});
+
 test("reference SVG geometry maps to cell-native caps and filled spans", () => {
   const frame = new TuiFrame(38, 9, { background: "#090807" });
   drawAssetDataHex(frame, 1, 1, 24, 7, "#ff3b21");
@@ -187,6 +222,13 @@ test("earthquake composition preserves the upstream assembly semantics", () => {
       .filter((cell) => cell.background === "#ff3b21").length > 180,
     "earthquake modules should be solid color masses",
   );
+  assert.ok(
+    frame
+      .rows()
+      .flatMap((row) => row)
+      .filter((cell) => cell.background === "#ffc247").length > 100,
+    "earthquake warnings and sync module should use solid amber masses",
+  );
 });
 
 test("tsunami composition is a warning field with six placards and a dossier", () => {
@@ -205,6 +247,8 @@ test("tsunami composition is a warning field with six placards and a dossier", (
   assert.match(output, /NODE-03/);
   assert.match(output, /╭/);
   assert.match(output, /[◢◣◤◥]/);
+  assert.equal(frame.cell(21, 1)?.background, "#ff3b21");
+  assert.equal(frame.cell(78, 5)?.background, "#ff3b21");
   const hazardCells = frame
     .rows()
     .flatMap((row) => row)
@@ -236,12 +280,12 @@ test("station composition maps state to alternating connected rib nodes", () => 
   assert.match(output, /SHELL/);
   assert.match(output, /\[ACT 04\]/);
   assert.ok(
-    cells.some(
-      (cell) =>
-        cell.background === "#2ee66b" ||
-        (cell.color === "#2ee66b" && "◢◣◤◥".includes(cell.char)),
-    ),
-    "nominal blades should use filled green SVG-derived surfaces",
+    cells.filter((cell) => cell.background === "#2ee66b").length > 10,
+    "nominal stations should use filled green rectangular surfaces",
+  );
+  assert.ok(
+    !cells.some((cell) => "◢◣◤◥".includes(cell.char)),
+    "station blocks should not rely on diagonal polygon caps",
   );
   assert.ok(
     cells.some(

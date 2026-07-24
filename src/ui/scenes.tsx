@@ -195,22 +195,27 @@ export function OperationsScreen({
   return (
     <Box flexDirection="column" flexGrow={1}>
       <Box
-        borderStyle="double"
+        borderStyle="single"
         borderColor={sync.percent === 100 ? theme.green : theme.purple}
-        paddingX={1}
         flexDirection="column"
         flexShrink={0}
       >
-        <Box justifyContent="space-between">
-          <Text color={theme.purple} bold>同期率 / SYNCHRONIZATION</Text>
-          <Text color={sync.percent === 100 ? theme.green : theme.orange} bold>
+        <Box
+          backgroundColor={sync.percent === 100 ? theme.green : theme.purple}
+          paddingX={1}
+          justifyContent="space-between"
+        >
+          <Text color={theme.black} bold>同期率 / SYNCHRONIZATION</Text>
+          <Text color={theme.black} bold>
             {sync.percent === null ? "NO PLAN" : `${sync.percent.toString().padStart(3, "0")}%`}
           </Text>
         </Box>
-        <Text color={sync.percent === 100 ? theme.green : theme.purple}>
-          [{gauge(sync.percent, Math.max(12, Math.min(42, columns - 30)))}]{" "}
-          {sync.total === 0 ? "STANDBY" : `${sync.completed}/${sync.total} STAGES`}
-        </Text>
+        <Box paddingX={1}>
+          <Text color={sync.percent === 100 ? theme.green : theme.purple}>
+            [{gauge(sync.percent, Math.max(12, Math.min(42, columns - 30)))}]{" "}
+            {sync.total === 0 ? "STANDBY" : `${sync.completed}/${sync.total} STAGES`}
+          </Text>
+        </Box>
       </Box>
 
       <Box flexDirection={wide ? "row" : "column"} flexGrow={1}>
@@ -317,11 +322,15 @@ export function StationsScreen({
 
   return (
     <Box flexDirection="column" flexGrow={1}>
-      <Box borderStyle="double" borderColor={theme.orange} paddingX={1} justifyContent="space-between">
-        <Text color={theme.orange} bold>
+      <Box
+        backgroundColor={theme.orange}
+        paddingX={1}
+        justifyContent="space-between"
+      >
+        <Text color={theme.black} bold>
           観測所網 / {graphicsBackend === "kitty" ? "TIER 3 RIB MATRIX" : "SEMANTIC RIB MATRIX"}
         </Text>
-        <Text color={ready === stations.length ? theme.green : theme.amber} bold>
+        <Text color={theme.black} bold>
           {ready.toString().padStart(2, "0")} / {stations.length.toString().padStart(2, "0")} NOMINAL
         </Text>
       </Box>
@@ -341,13 +350,17 @@ export function StationsScreen({
         )}
       </Box>
       {selected ? (
-        <Box borderStyle="single" borderColor={statusColor(selected.status)} paddingX={1} flexShrink={0}>
-          <Text color={statusColor(selected.status)} bold>
+        <Box
+          backgroundColor={statusColor(selected.status)}
+          paddingX={1}
+          flexShrink={0}
+        >
+          <Text color={theme.black} bold>
             {stateGlyph(selected.status)} {selected.label}
           </Text>
-          <Text color={theme.dim}> · {selected.detail} · </Text>
-          <Text color={theme.white}>{selected.status}</Text>
-          <Text color={theme.dim}> · {selected.eventCount} EVENTS · {selected.trace}</Text>
+          <Text color={theme.black}> · {selected.detail} · </Text>
+          <Text color={theme.black}>{selected.status}</Text>
+          <Text color={theme.black}> · {selected.eventCount} EVENTS · {selected.trace}</Text>
         </Box>
       ) : null}
       <Text color={theme.dim}>↑/↓ INSPECT STATION · SIGNAL GLYPHS ARE RECORDED EVENT STATES</Text>
@@ -578,11 +591,13 @@ export function EarthquakeOverlay({
   );
   return (
     <Box flexDirection="column" height={rows} justifyContent="space-between">
-      <Text backgroundColor={simulation ? theme.amber : theme.red} color={theme.black} bold>
-        {simulation
-          ? " 試験 / SIMULATION — NO WORKSPACE ACTION "
-          : " 警告 / OPERATION FAILURE DETECTED "}
-      </Text>
+      <Box backgroundColor={simulation ? theme.amber : theme.red} paddingX={1}>
+        <Text color={theme.black} bold>
+          {simulation
+            ? "試験 / SIMULATION — NO WORKSPACE ACTION"
+            : "警告 / OPERATION FAILURE DETECTED"}
+        </Text>
+      </Box>
       {graphicsBackend === "kitty" ? (
         <TerminalGraphicView
           scene="earthquake"
@@ -628,9 +643,11 @@ export function TsunamiOverlay({
   );
   return (
     <Box flexDirection="column" height={rows} justifyContent="space-between">
-      <Text backgroundColor={theme.amber} color={theme.black} bold>
-        {" 試験 / SIMULATION — NO WORKSPACE ACTION "}
-      </Text>
+      <Box backgroundColor={theme.amber} paddingX={1}>
+        <Text color={theme.black} bold>
+          試験 / SIMULATION — NO WORKSPACE ACTION
+        </Text>
+      </Box>
       {graphicsBackend === "kitty" ? (
         <TerminalGraphicView
           scene="tsunami"

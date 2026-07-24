@@ -171,6 +171,93 @@ export function drawHazardRail(
   }
 }
 
+export function drawFilledRectPanel(
+  frame: TuiFrame,
+  options: PanelOptions & { railInset?: number },
+): void {
+  const x = Math.floor(options.x);
+  const y = Math.floor(options.y);
+  const width = Math.max(8, Math.floor(options.width));
+  const height = Math.max(3, Math.floor(options.height ?? 5));
+  const fill = options.fill ?? theme.red;
+  const rail = options.border ?? theme.black;
+  const text = options.text ?? theme.black;
+  const maximumInset = Math.max(1, Math.floor((width - 3) / 2));
+  const railInset = Math.min(
+    maximumInset,
+    Math.max(1, Math.floor(options.railInset ?? 3)),
+  );
+
+  frame.fill(x, y, width, height, " ", {
+    color: fill,
+    background: fill,
+  });
+  frame.hLine(x + railInset, y, width - railInset * 2, "━", {
+    color: rail,
+    background: fill,
+    bold: true,
+  });
+  frame.hLine(x + railInset, y + height - 1, width - railInset * 2, "━", {
+    color: rail,
+    background: fill,
+    bold: true,
+  });
+
+  const lines = [options.tag, options.title, options.subtitle].filter(
+    (line): line is string => Boolean(line),
+  );
+  const firstRow = y + Math.max(1, Math.floor((height - lines.length) / 2));
+  lines.forEach((line, index) => {
+    frame.centeredText(
+      Math.min(y + height - 2, firstRow + index),
+      truncateTuiText(line, width - 4),
+      {
+        color: text,
+        background: fill,
+        bold: index < 2,
+      },
+      x,
+      width,
+    );
+  });
+}
+
+export function drawRectStatusBlock(
+  frame: TuiFrame,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  direction: -1 | 1,
+  tone: string,
+  accent: string = theme.amber,
+): void {
+  const w = Math.max(4, Math.floor(width));
+  const h = Math.max(1, Math.floor(height));
+  const left = Math.floor(x);
+  const top = Math.floor(y);
+  const accentWidth = Math.max(1, Math.min(w, Math.round(w * (168.5 / 500))));
+  const accentX = direction < 0 ? left : left + w - accentWidth;
+  const railX = direction < 0 ? accentX + accentWidth : left;
+  const railWidth = w - accentWidth;
+
+  frame.fill(left, top, w, h, " ", {
+    color: tone,
+    background: tone,
+  });
+  frame.fill(accentX, top, accentWidth, h, " ", {
+    color: accent,
+    background: accent,
+  });
+  if (railWidth > 0) {
+    frame.hLine(railX, top, railWidth, "━", {
+      color: theme.black,
+      background: tone,
+      bold: true,
+    });
+  }
+}
+
 export function drawLongHex(frame: TuiFrame, options: PanelOptions): void {
   const height = Math.max(3, Math.min(7, options.height ?? 5));
   const width = Math.max(12, Math.floor(options.width));

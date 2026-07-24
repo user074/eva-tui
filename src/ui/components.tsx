@@ -28,14 +28,17 @@ export function Panel({
       borderStyle="single"
       borderColor={accent}
       flexDirection="column"
-      paddingX={1}
       flexGrow={flexGrow}
       width={width}
     >
-      <Text color={accent} bold>
-        {title}
-      </Text>
-      {children}
+      <Box backgroundColor={accent} paddingX={1} flexShrink={0}>
+        <Text color={theme.black} bold>
+          {title}
+        </Text>
+      </Box>
+      <Box flexDirection="column" paddingX={1} flexGrow={1}>
+        {children}
+      </Box>
     </Box>
   );
 }
@@ -52,6 +55,13 @@ export function Header({
   const live = state.connection === "online";
   const running = state.turn === "running";
   const alert = state.approval !== null || state.turn === "failed";
+  const noticeTone = alert
+    ? theme.red
+    : running
+      ? theme.amber
+      : live
+        ? theme.orange
+        : theme.dim;
   const stripe = Array.from({ length: 7 }, (_, index) =>
     (index + phase) % 2 === 0 ? "///" : "\\\\\\",
   ).join("");
@@ -59,20 +69,31 @@ export function Header({
   return (
     <Box flexDirection="column" flexShrink={0}>
       <Box justifyContent="space-between">
-        <Text color={theme.orange} bold>
-          EVA://CODEX <Text color={theme.purple}>OPERATIONAL INTERFACE</Text>
-        </Text>
-        <Text color={live ? theme.green : theme.red} bold>
-          {live ? "● 接続 ONLINE" : "● 切断 OFFLINE"}
-        </Text>
+        <Box backgroundColor={theme.orange} paddingX={1}>
+          <Text color={theme.black} bold>
+            EVA://CODEX  OPERATIONAL INTERFACE
+          </Text>
+        </Box>
+        <Box backgroundColor={live ? theme.green : theme.red} paddingX={1}>
+          <Text color={theme.black} bold>
+            {live ? "● 接続 ONLINE" : "● 切断 OFFLINE"}
+          </Text>
+        </Box>
       </Box>
       <Box justifyContent="space-between">
-        <Text color={alert ? theme.red : running ? theme.orange : theme.dim}>
-          {alert ? stripe : "─────────────────────"} {state.notice}
-        </Text>
-        <Text color={audio === "OFF" ? theme.dim : theme.cyan}>
-          AUDIO {audio}
-        </Text>
+        <Box backgroundColor={noticeTone} paddingX={1}>
+          <Text color={theme.black} bold>
+            {alert ? stripe : "STATUS //"} {state.notice}
+          </Text>
+        </Box>
+        <Box
+          backgroundColor={audio === "OFF" ? theme.black : theme.cyan}
+          paddingX={1}
+        >
+          <Text color={audio === "OFF" ? theme.dim : theme.black} bold>
+            AUDIO {audio}
+          </Text>
+        </Box>
       </Box>
     </Box>
   );
