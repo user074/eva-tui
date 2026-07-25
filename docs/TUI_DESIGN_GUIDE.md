@@ -96,10 +96,11 @@ poster-sized typography inside normal operational screens.
 | Alert plate | solid red/amber background, inset black rails, real text | dominant event |
 | Data block | solid rectangular fill, label and value | measurement or coupled state |
 | Placard | rounded black chassis, amber caps, Kanji | distributed alert node |
-| Dossier | rounded box, tight `◢◤` / `◣◥` rails on all four edges, nested rows | actionable detail |
+| Dossier | rounded box, tight `◢◤` rails on all four edges, nested rows | actionable detail |
 | Warning field | spaced red/crimson square tiles, black edges, one black `▲`/`▼` marker | spatial threat coverage |
 | Rib | `┃`, `┫`, `┣`, `━`, two-row filled status block | system topology |
 | Signal channel | label, animated `━─` span, target | propagation or progress |
+| Sync scope | three continuous cyan, violet, and red Braille sine curves on a 2×4 subcell grid | 0–100 earthquake synchronization signal |
 
 These primitives live in `src/ui/tui-primitives.ts`. Asset proportions and
 their cell-native cap/span constructions live in
@@ -162,6 +163,11 @@ Animation is discrete and stateful:
 - hazard stripes shift by one terminal cell;
 - danger color pulses between red and amber;
 - propagation channels extend and reset;
+- the earthquake synchronization scope advances its carrier and pulse while
+  its 0–100 value converges three curves with distinct starting amplitude,
+  frequency, phase, and centerline into one locked curve;
+- a simulated earthquake without a fixed override sweeps from 0 to 100 over
+  ten seconds and then holds the locked curve;
 - the selected station marker blinks;
 - scene elements may reveal in ordered stages.
 
@@ -190,7 +196,9 @@ Visual modules must bind to Codex data:
 - station event codes use recorded event counts;
 - earthquake dossiers use the actual diagnostic or failed activity label;
 - tsunami dossiers use real changed-file and line counts when available;
-- synchronization rails use actual plan completion;
+- synchronization rails and scope convergence use actual plan completion;
+- plain `/eq` performs the ten-second simulated synchronization sweep, while
+  `/eq 0` through `/eq 100` hold an explicitly fixed test value;
 - approval alerts show the proposed operation and derived risk.
 
 Fixture data is allowed only in screens explicitly marked `試験 / SIMULATION`.
@@ -252,7 +260,8 @@ matrix, and both compact `78×21` scenes. Check:
 3. the dominant event is readable before supporting data;
 4. state remains understandable without color;
 5. compact mode preserves action and severity;
-6. no Braille or quadrant raster texture appears.
+6. Braille appears only in the small earthquake synchronization scope; no
+   large chassis or warning field is rasterized as Braille or quadrant texture.
 
 Then run:
 

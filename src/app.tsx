@@ -78,6 +78,8 @@ export function App(props: AppProps) {
   const [audioStatus, setAudioStatus] = useState("OFF");
   const [scene, setScene] = useState<Scene>("operations");
   const [simulation, setSimulation] = useState<Simulation | null>(null);
+  const [earthquakeSynchronization, setEarthquakeSynchronization] =
+    useState<number | null>(null);
   const [failureDismissed, setFailureDismissed] = useState(false);
   const [stationSelection, setStationSelection] = useState(0);
   const graphicsBackend = useMemo(
@@ -226,8 +228,29 @@ export function App(props: AppProps) {
         setComposer("");
         return;
       }
-      if (text === "/simulate earthquake" || text === "/eq") {
+      const earthquakeCommand =
+        /^(?:\/simulate earthquake|\/eq)(?:\s+(.*))?$/.exec(text);
+      if (earthquakeCommand) {
+        const rawSynchronization = earthquakeCommand[1];
+        const synchronizationValue =
+          rawSynchronization === undefined
+            ? null
+            : Number(rawSynchronization);
+        if (
+          synchronizationValue !== null &&
+          (!Number.isInteger(synchronizationValue) ||
+            synchronizationValue < 0 ||
+            synchronizationValue > 100)
+        ) {
+          dispatch({
+            type: "notice",
+            message: "EARTHQUAKE SYNC MUST BE AN INTEGER FROM 0 TO 100",
+          });
+          setComposer("");
+          return;
+        }
         setPhase(0);
+        setEarthquakeSynchronization(synchronizationValue);
         setSimulation("earthquake");
         setComposer("");
         return;
@@ -255,7 +278,8 @@ export function App(props: AppProps) {
       if (text === "/help") {
         dispatch({
           type: "notice",
-          message: "TAB VIEWS · /VIEW <NAME> · /SIMULATE EARTHQUAKE|TSUNAMI",
+          message:
+            "TAB VIEWS · /VIEW <NAME> · /EQ [0-100] · /TSUNAMI",
         });
         setComposer("");
         return;
@@ -398,6 +422,12 @@ export function App(props: AppProps) {
           state={state}
           phase={phase}
           simulation={simulation === "earthquake"}
+          {...(simulation === "earthquake" &&
+          earthquakeSynchronization !== null
+            ? {
+                synchronizationPercent: earthquakeSynchronization,
+              }
+            : {})}
           columns={size.columns}
           rows={size.rows}
           graphicsBackend={graphicsBackend}

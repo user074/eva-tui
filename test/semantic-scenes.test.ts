@@ -8,6 +8,7 @@ import {
 } from "../src/ui/asset-cell-masks.js";
 import {
   denseDiagonalStripe,
+  drawBrailleWaveform,
   drawDossier,
   drawFilledDiamond,
   drawFilledRectPanel,
@@ -22,6 +23,7 @@ import {
   buildStationFrame,
   buildTsunamiFrame,
 } from "../src/ui/semantic-scenes.js";
+import { earthquakeSynchronizationAtPhase } from "../src/ui/semantic-graphic-view.js";
 import {
   TuiFrame,
   tuiFrameToAnsi,
@@ -186,6 +188,57 @@ test("filled triangle primitives compose across multiple terminal rows", () => {
   assert.match(output, /▶/);
 });
 
+test("Braille waveform uses a connected animated 2x4 subcell signal", () => {
+  const early = new TuiFrame(32, 3, { background: "#090807" });
+  const later = new TuiFrame(32, 3, { background: "#090807" });
+  drawBrailleWaveform(early, 1, 0, 30, 3, 1);
+  drawBrailleWaveform(later, 1, 0, 30, 3, 7);
+  const earlyText = tuiFrameToText(early);
+  const laterText = tuiFrameToText(later);
+  const signalCells = early
+    .rows()
+    .flatMap((row) => row)
+    .filter((cell) => /[\u2800-\u28ff]/u.test(cell.char));
+
+  assert.ok(signalCells.length > 20);
+  assert.notEqual(earlyText, laterText);
+});
+
+test("waveform synchronization converges distinct colored sine traces", () => {
+  const separated = new TuiFrame(48, 4, { background: "#090807" });
+  const aligned = new TuiFrame(48, 4, { background: "#090807" });
+  drawBrailleWaveform(separated, 0, 0, 48, 4, 3, "#3ce6e6", 0);
+  drawBrailleWaveform(aligned, 0, 0, 48, 4, 3, "#3ce6e6", 100);
+  const dotCount = (frame: TuiFrame): number =>
+    frame
+      .rows()
+      .flatMap((row) => row)
+      .reduce((total, cell) => {
+        const codePoint = cell.char.codePointAt(0) ?? 0;
+        if (codePoint < 0x2800 || codePoint > 0x28ff) return total;
+        const mask = codePoint - 0x2800;
+        return total + mask.toString(2).replaceAll("0", "").length;
+      }, 0);
+  const separatedColors = new Set(
+    separated
+      .rows()
+      .flatMap((row) => row)
+      .filter((cell) => /[\u2800-\u28ff]/u.test(cell.char))
+      .map((cell) => cell.color),
+  );
+
+  assert.ok(dotCount(separated) > dotCount(aligned) * 1.8);
+  assert.ok(separatedColors.size >= 3);
+});
+
+test("earthquake simulation synchronization sweeps from zero to lock in ten seconds", () => {
+  assert.equal(earthquakeSynchronizationAtPhase(0), 0);
+  assert.equal(earthquakeSynchronizationAtPhase(5), 20);
+  assert.equal(earthquakeSynchronizationAtPhase(12), 48);
+  assert.equal(earthquakeSynchronizationAtPhase(25), 100);
+  assert.equal(earthquakeSynchronizationAtPhase(250), 100);
+});
+
 test("rectangular panels use gapless background fills and solid index tabs", () => {
   const frame = new TuiFrame(30, 7, { background: "#090807" });
   drawFilledRectPanel(frame, {
@@ -342,6 +395,7 @@ test("earthquake composition preserves the upstream assembly semantics", () => {
     rows: 29,
     phase: 4,
     simulation: true,
+    synchronizationPercent: 35,
     incidentDetail: "Fixture command failure detected.",
   });
   const output = tuiFrameToText(frame);
@@ -355,7 +409,19 @@ test("earthquake composition preserves the upstream assembly semantics", () => {
   assert.match(output, /DEPTH/);
   assert.match(output, /TEST INCIDENT DOSSIER/);
   assert.match(output, /[◢◣◤◥]/);
-  assert.doesNotMatch(output, /[\u2800-\u28ff]/);
+  assert.match(output, /SYNC 035%/);
+  assert.match(output, /[\u2800-\u28ff]/);
+  assert.ok(
+    frame
+      .rows()
+      .flatMap((row) => row)
+      .some(
+        (cell) =>
+          cell.color === "#3ce6e6" &&
+          /[\u2800-\u28ff]/u.test(cell.char),
+      ),
+    "earthquake dossier should retain the animated cyan synchronization scope",
+  );
   assert.ok(
     frame
       .rows()
@@ -459,6 +525,31 @@ test("operational motion continues independently of the entrance phase", () => {
   assert.match(early, /PROPAGATION/);
   assert.match(later, /PROPAGATION/);
   assert.notEqual(early, later);
+
+  const earlyEarthquake = tuiFrameToText(
+    buildEarthquakeFrame({
+      columns: 100,
+      rows: 29,
+      phase: 24,
+      motionPhase: 1,
+      synchronizationPercent: 45,
+      simulation: true,
+      incidentDetail: "Fixture failure.",
+    }),
+  );
+  const laterEarthquake = tuiFrameToText(
+    buildEarthquakeFrame({
+      columns: 100,
+      rows: 29,
+      phase: 24,
+      motionPhase: 9,
+      synchronizationPercent: 45,
+      simulation: true,
+      incidentDetail: "Fixture failure.",
+    }),
+  );
+  assert.match(earlyEarthquake, /SYNC 045%/);
+  assert.notEqual(earlyEarthquake, laterEarthquake);
 });
 
 test("semantic warning scenes retain hierarchy in a compact terminal", () => {
@@ -477,6 +568,7 @@ test("semantic warning scenes retain hierarchy in a compact terminal", () => {
 
   assert.match(earthquake, /Fixture failure/);
   assert.match(earthquake, /SYNC LINK/);
+  assert.match(earthquake, /[\u2800-\u28ff]/);
   assert.match(tsunami, /PROPAGATION/);
   assert.match(tsunami, /PACIFIC FIXTURE GRID/);
 });

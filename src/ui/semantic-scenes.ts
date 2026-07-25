@@ -5,6 +5,7 @@ import { statusColor, theme } from "./theme.js";
 import { TuiFrame, truncateTuiText, tuiTextWidth } from "./tui-frame.js";
 import {
   drawAlertPlacard,
+  drawBrailleWaveform,
   drawDossier,
   drawFilledRectPanel,
   drawHazardRail,
@@ -17,6 +18,7 @@ export interface EarthquakeFrameOptions {
   rows: number;
   phase: number;
   motionPhase?: number;
+  synchronizationPercent?: number;
   incidentDetail: string;
   simulation: boolean;
 }
@@ -66,38 +68,54 @@ function drawEarthquakeSummary(
   const tone = options.simulation ? theme.amber : theme.red;
   const label = options.simulation ? "TEST INCIDENT DOSSIER" : "FAILURE DOSSIER";
   const motionPhase = options.motionPhase ?? options.phase;
+  const synchronizationPercent = Math.max(
+    0,
+    Math.min(100, options.synchronizationPercent ?? 0),
+  );
   if (frame.height >= 27 && y + 8 <= frame.height - 2) {
     const width = Math.min(70, frame.width - 24);
     const x = Math.floor((frame.width - width) / 2);
+    const height = Math.max(
+      8,
+      Math.min(10, frame.height - y - 2),
+    );
     const inner = drawDossier(frame, {
       x,
       y,
       width,
-      height: 8,
+      height,
       title: label,
       border: tone,
       phase: motionPhase,
     });
+    const incidentMode = options.simulation
+      ? "SIMULATION / NO ACTION"
+      : "ACTIVE TURN FAILURE";
     frame.centeredText(
       inner.y,
-      options.simulation ? "SIMULATION / NO WORKSPACE ACTION" : "ACTIVE TURN FAILURE",
-      { color: tone, bold: true },
-      inner.x,
-      inner.width,
-    );
-    frame.centeredText(
-      inner.y + 1,
-      truncateTuiText(options.incidentDetail, inner.width),
+      truncateTuiText(
+        `${incidentMode} // ${options.incidentDetail}`,
+        inner.width,
+      ),
       { color: theme.white },
       inner.x,
       inner.width,
     );
-    frame.centeredText(
-      inner.y + 2,
-      `${motionPhase % 2 === 0 ? "◢◤" : "◤◢"}  SIGNAL LOCKED  //  OPERATOR REVIEW REQUIRED  ${motionPhase % 2 === 0 ? "◢◤" : "◤◢"}`,
-      { color: theme.dim, blink: true },
-      inner.x,
-      inner.width,
+    const scopeLabel =
+      `SYNC ${synchronizationPercent.toString().padStart(3, "0")}%`;
+    frame.text(inner.x, inner.y + 1, scopeLabel, {
+      color: theme.dim,
+      bold: true,
+    });
+    drawBrailleWaveform(
+      frame,
+      inner.x + scopeLabel.length + 2,
+      inner.y + 1,
+      inner.width - scopeLabel.length - 2,
+      Math.max(1, inner.height - 1),
+      motionPhase,
+      theme.cyan,
+      synchronizationPercent,
     );
     return;
   }
@@ -108,6 +126,21 @@ function drawEarthquakeSummary(
       ` ${truncateTuiText(options.incidentDetail, frame.width - 8)} `,
       { color: theme.white, background: theme.crimson, bold: true },
     );
+    if (y + 1 < frame.height - 2) {
+      const scopeLabel =
+        `SYNC ${synchronizationPercent.toString().padStart(3, "0")}%`;
+      frame.text(2, y + 1, scopeLabel, { color: theme.dim, bold: true });
+      drawBrailleWaveform(
+        frame,
+        scopeLabel.length + 4,
+        y + 1,
+        frame.width - scopeLabel.length - 6,
+        1,
+        motionPhase,
+        theme.cyan,
+        synchronizationPercent,
+      );
+    }
   }
 }
 
@@ -178,7 +211,7 @@ export function buildEarthquakeFrame(
     });
   }
 
-  const dataY = compact ? 9 : 11;
+  const dataY = compact ? 9 : 10;
   const moduleHeight = 6;
   const sidePlacardWidth = compact ? 0 : 12;
   const groupAvailable = frame.width - (compact ? 4 : sidePlacardWidth * 2 + 8);
@@ -271,7 +304,7 @@ export function buildEarthquakeFrame(
     );
   }
 
-  drawEarthquakeSummary(frame, compact ? dataY + 8 : 19, options);
+  drawEarthquakeSummary(frame, compact ? dataY + 8 : 17, options);
   return frame;
 }
 

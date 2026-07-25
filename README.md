@@ -187,12 +187,18 @@ Slash commands:
 - `/view stations`
 - `/view impact`
 - `/view transcript`
-- `/simulate earthquake` or `/eq`
+- `/simulate earthquake [0-100]` or `/eq [0-100]`
 - `/simulate tsunami` or `/tsunami`
 - `/music`, `/interrupt`, `/help`, and `/quit`
 
 Simulation screens are fixture-driven and always marked
 `試験 / SIMULATION`. They do not start a Codex turn or modify the workspace.
+For earthquake simulation, the optional percentage controls the synchronization
+scope: `0` shows three distinct continuous sine curves, while `100` converges
+their different starting amplitudes, frequencies, phases, and centerlines into
+one locked waveform. Plain `/eq` automatically sweeps from `0` to
+`100` over ten seconds and then remains locked. A real failure display follows
+actual plan completion.
 
 ## Terminal graphics
 

@@ -559,6 +559,7 @@ export function EarthquakeOverlay({
   state,
   phase,
   simulation,
+  synchronizationPercent,
   columns,
   rows,
   graphicsBackend,
@@ -566,6 +567,7 @@ export function EarthquakeOverlay({
   state: AppState;
   phase: number;
   simulation: boolean;
+  synchronizationPercent?: number;
   columns: number;
   rows: number;
   graphicsBackend: GraphicsBackend;
@@ -586,6 +588,9 @@ export function EarthquakeOverlay({
       phase={phase}
       incidentDetail={incidentDetail}
       simulation={simulation}
+      {...(synchronizationPercent === undefined
+        ? {}
+        : { synchronizationPercent })}
       state={state}
     />
   );

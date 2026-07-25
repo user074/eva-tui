@@ -152,7 +152,9 @@ TUI controls:
   Ctrl-Q             Exit
   /music             Toggle audio
   /view <name>       Open operations, stations, impact, or transcript
-  /simulate <type>   Run a safe earthquake or tsunami UI simulation
+  /simulate earthquake [0-100]
+                      Auto-sync over 10s, or hold an optional fixed percentage
+  /simulate tsunami   Run the safe tsunami UI simulation
 `);
 }
 

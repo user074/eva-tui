@@ -95,11 +95,29 @@ await writePreview(
     columns: 100,
     rows: 29,
     phase: 4,
+    synchronizationPercent: 35,
     simulation: true,
     incidentDetail:
       "Fixture command failure detected in the simulated execution layer.",
   }),
 );
+for (const synchronizationPercent of [0, 50, 100] as const) {
+  await writePreview(
+    `earthquake-sync-${synchronizationPercent
+      .toString()
+      .padStart(3, "0")}-100x29`,
+    buildEarthquakeFrame({
+      columns: 100,
+      rows: 29,
+      phase: 4,
+      motionPhase: 4,
+      synchronizationPercent,
+      simulation: true,
+      incidentDetail:
+        "Fixture command failure detected in the simulated execution layer.",
+    }),
+  );
+}
 await writePreview(
   "tsunami-100x29",
   buildTsunamiFrame({
@@ -135,6 +153,7 @@ await writePreview(
     columns: 78,
     rows: 21,
     phase: 4,
+    synchronizationPercent: 35,
     simulation: true,
     incidentDetail: "Fixture command failure / simulated execution layer.",
   }),

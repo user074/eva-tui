@@ -142,6 +142,185 @@ export function drawHorizontalTriangle(
   }
 }
 
+export function drawBrailleWaveform(
+  frame: TuiFrame,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  phase: number,
+  tone: string = theme.cyan,
+  synchronizationPercent = 100,
+): void {
+  const left = Math.floor(x);
+  const top = Math.floor(y);
+  const w = Math.max(1, Math.floor(width));
+  const h = Math.max(1, Math.floor(height));
+  const pixelWidth = w * 2;
+  const pixelHeight = h * 4;
+  const traceCount = h === 1 ? 2 : 3;
+  const synchronization = Math.max(
+    0,
+    Math.min(100, synchronizationPercent),
+  ) / 100;
+  // Terminal cells make nearby traces merge sooner than vector lines. Ease the
+  // spread so the middle of the 0–100 range remains visually distinguishable.
+  const dispersion = Math.pow(1 - synchronization, 1.8);
+  const palette = [
+    tone,
+    theme.purple,
+    theme.red,
+    theme.amber,
+    theme.purple,
+    theme.cyan,
+    theme.red,
+  ];
+  const fullTraceProfiles = [
+    { phase: -1.65, frequency: 0.72, amplitude: 0.34, bias: -0.16 },
+    { phase: -0.7, frequency: 0.88, amplitude: 0.47, bias: 0.1 },
+    { phase: 0.15, frequency: 1.03, amplitude: 0.58, bias: -0.04 },
+    { phase: 1, frequency: 1.19, amplitude: 0.4, bias: 0.15 },
+    { phase: 2, frequency: 1.36, amplitude: 0.52, bias: -0.1 },
+  ] as const;
+  const traceProfiles =
+    traceCount === 2
+      ? [
+          fullTraceProfiles[0],
+          fullTraceProfiles[4],
+        ]
+      : [
+          fullTraceProfiles[0],
+          fullTraceProfiles[2],
+          fullTraceProfiles[4],
+        ];
+  const cells = Array.from({ length: h }, () =>
+    Array.from({ length: w }, () => ({
+      mask: 0,
+      hits: 0,
+      color: tone,
+    })),
+  );
+  const dotBits = [
+    [0, 3],
+    [1, 4],
+    [2, 5],
+    [6, 7],
+  ] as const;
+
+  for (let traceIndex = 0; traceIndex < traceCount; traceIndex += 1) {
+    const masks = Array.from({ length: h }, () =>
+      Array.from({ length: w }, () => 0),
+    );
+    const setDot = (pixelX: number, pixelY: number): void => {
+      if (
+        pixelX < 0 ||
+        pixelX >= pixelWidth ||
+        pixelY < 0 ||
+        pixelY >= pixelHeight
+      ) {
+        return;
+      }
+      const cellX = Math.floor(pixelX / 2);
+      const cellY = Math.floor(pixelY / 4);
+      const bit = dotBits[pixelY % 4]?.[pixelX % 2];
+      if (bit === undefined) return;
+      const row = masks[cellY];
+      if (!row) return;
+      row[cellX] = (row[cellX] ?? 0) | (1 << bit);
+    };
+    const connect = (
+      fromX: number,
+      fromY: number,
+      toX: number,
+      toY: number,
+    ): void => {
+      let currentX = fromX;
+      let currentY = fromY;
+      const deltaX = Math.abs(toX - fromX);
+      const deltaY = Math.abs(toY - fromY);
+      const stepX = fromX < toX ? 1 : -1;
+      const stepY = fromY < toY ? 1 : -1;
+      let error = deltaX - deltaY;
+      while (true) {
+        setDot(currentX, currentY);
+        if (currentX === toX && currentY === toY) break;
+        const doubledError = error * 2;
+        if (doubledError > -deltaY) {
+          error -= deltaY;
+          currentX += stepX;
+        }
+        if (doubledError < deltaX) {
+          error += deltaX;
+          currentY += stepY;
+        }
+      }
+    };
+
+    const profile = traceProfiles[traceIndex] ?? fullTraceProfiles[2];
+    // Every trace remains a single pure sine line. Synchronization only pulls
+    // its smooth phase, frequency, amplitude, and baseline offsets toward the
+    // shared carrier; it never adds noise or point-wise distortion.
+    const phaseOffset = profile.phase * dispersion;
+    const frequency =
+      0.27 * (1 + (profile.frequency - 1) * dispersion);
+    const amplitude =
+      0.5 + (profile.amplitude - 0.5) * dispersion;
+    const verticalBias = profile.bias * dispersion;
+    let previousY = Math.floor(pixelHeight / 2);
+    for (let pixelX = 0; pixelX < pixelWidth; pixelX += 1) {
+      const carrier = Math.sin(
+        pixelX * frequency + phase * 0.58 + phaseOffset,
+      ) * amplitude;
+      const value = Math.max(
+        -1,
+        Math.min(1, carrier + verticalBias),
+      );
+      const pixelY = Math.round(
+        ((1 - value) / 2) * Math.max(0, pixelHeight - 1),
+      );
+      if (pixelX === 0) {
+        setDot(pixelX, pixelY);
+      } else {
+        connect(pixelX - 1, previousY, pixelX, pixelY);
+      }
+      previousY = pixelY;
+    }
+
+    masks.forEach((row, cellY) => {
+      row.forEach((mask, cellX) => {
+        if (mask === 0) return;
+        const cell = cells[cellY]?.[cellX];
+        if (!cell) return;
+        cell.mask |= mask;
+        cell.hits += 1;
+        cell.color = palette[traceIndex % palette.length] ?? tone;
+      });
+    });
+  }
+
+  cells.forEach((row, cellY) => {
+    row.forEach((cell, cellX) => {
+      if (cell.mask === 0) return;
+      const overlapColor =
+        cell.hits >= Math.ceil(traceCount * 0.65)
+          ? theme.white
+          : cell.hits >= 2
+            ? theme.purple
+            : cell.color;
+      frame.put(
+        left + cellX,
+        top + cellY,
+        String.fromCodePoint(0x2800 + cell.mask),
+        {
+          color: overlapColor,
+          background: theme.black,
+          bold: true,
+        },
+      );
+    });
+  });
+}
+
 function drawHorizontalHexSurface(
   frame: TuiFrame,
   x: number,
