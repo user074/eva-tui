@@ -31,6 +31,11 @@ import {
   TranscriptScreen,
   TsunamiOverlay,
 } from "./ui/scenes.js";
+import {
+  DISABLE_TERMINAL_MOUSE,
+  ENABLE_TERMINAL_MOUSE,
+  parseTerminalMouseEvent,
+} from "./ui/terminal-mouse.js";
 import { theme } from "./ui/theme.js";
 
 export interface AppProps {
@@ -69,9 +74,22 @@ function useTerminalSize(): { columns: number; rows: number } {
   return size;
 }
 
+function useTerminalMouseReporting(): void {
+  const { stdout } = useStdout();
+
+  useEffect(() => {
+    if (!stdout.isTTY) return;
+    stdout.write(ENABLE_TERMINAL_MOUSE);
+    return () => {
+      stdout.write(DISABLE_TERMINAL_MOUSE);
+    };
+  }, [stdout]);
+}
+
 export function App(props: AppProps) {
   const { exit } = useApp();
   const size = useTerminalSize();
+  useTerminalMouseReporting();
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [composer, setComposer] = useState("");
   const [phase, setPhase] = useState(0);
@@ -82,6 +100,7 @@ export function App(props: AppProps) {
     useState<number | null>(null);
   const [failureDismissed, setFailureDismissed] = useState(false);
   const [stationSelection, setStationSelection] = useState(0);
+  const [commScrollOffset, setCommScrollOffset] = useState(0);
   const graphicsBackend = useMemo(
     () => resolveGraphicsBackend(props.graphicsMode ?? "auto"),
     [props.graphicsMode],
@@ -101,6 +120,17 @@ export function App(props: AppProps) {
     audio.dispose();
     client.dispose();
   }, [audio, client]);
+
+  const scrollComm = useCallback((lines: number): void => {
+    setCommScrollOffset((current) =>
+      Math.max(0, Math.min(10_000, current + lines)),
+    );
+  }, []);
+
+  const latestTranscriptId = state.transcript.at(-1)?.id;
+  useEffect(() => {
+    setCommScrollOffset(0);
+  }, [latestTranscriptId]);
 
   const animationKey = state.approval
     ? `approval:${state.approval.id}`
@@ -329,6 +359,20 @@ export function App(props: AppProps) {
       return;
     }
 
+    const mouseEvent = parseTerminalMouseEvent(input);
+    if (mouseEvent) {
+      if (
+        mouseEvent.kind === "wheel" &&
+        (scene === "operations" || scene === "transcript") &&
+        !state.approval &&
+        !simulation &&
+        !(state.turn === "failed" && !failureDismissed)
+      ) {
+        scrollComm(mouseEvent.direction === "up" ? 3 : -3);
+      }
+      return;
+    }
+
     if (state.approval) {
       let decision: ApprovalDecision | null = null;
       if (input.toLowerCase() === "y") decision = "accept";
@@ -372,6 +416,20 @@ export function App(props: AppProps) {
       setScene((current) => cycleScene(current, key.shift ? -1 : 1));
       return;
     }
+    if (
+      (scene === "operations" || scene === "transcript") &&
+      (key.pageUp || key.upArrow)
+    ) {
+      scrollComm(key.pageUp ? 3 : 1);
+      return;
+    }
+    if (
+      (scene === "operations" || scene === "transcript") &&
+      (key.pageDown || key.downArrow)
+    ) {
+      scrollComm(key.pageDown ? -3 : -1);
+      return;
+    }
     if (scene === "stations" && composer.length === 0 && key.upArrow) {
       setStationSelection((value) => value - 1);
       return;
@@ -404,6 +462,10 @@ export function App(props: AppProps) {
   });
 
   const promptColor = state.turn === "running" ? theme.dim : theme.cyan;
+  const appleTerminal = process.env.TERM_PROGRAM === "Apple_Terminal";
+  const commControls = appleTerminal
+    ? "TRACKPAD: ⌘R ENABLE MOUSE · ↑↓/PGUP/PGDN COMM"
+    : "WHEEL/↑↓/PGUP/PGDN COMM";
 
   if (state.approval) {
     return (
@@ -462,7 +524,9 @@ export function App(props: AppProps) {
           state={state}
           columns={size.columns}
           rows={size.rows}
+          audioStatus={audioStatus}
           humanComposing={composer.length > 0}
+          commScrollOffset={commScrollOffset}
         />
       ) : null}
       {scene === "stations" ? (
@@ -480,7 +544,12 @@ export function App(props: AppProps) {
         <ImpactScreen state={state} columns={size.columns} />
       ) : null}
       {scene === "transcript" ? (
-        <TranscriptScreen state={state} rows={size.rows} columns={size.columns} />
+        <TranscriptScreen
+          state={state}
+          rows={size.rows}
+          columns={size.columns}
+          scrollOffset={commScrollOffset}
+        />
       ) : null}
 
       <Box borderStyle="single" borderColor={promptColor} paddingX={1} flexShrink={0}>
@@ -495,7 +564,9 @@ export function App(props: AppProps) {
         <Box>
           <Box width="66%">
             <Text color={theme.dim} wrap="truncate-end">
-              TAB VIEWS  ↑↓ STATION  ENTER SEND  ^C INTERRUPT/EXIT  ^G AUDIO
+              {scene === "operations" || scene === "transcript"
+                ? `${commControls}  TAB VIEWS  ENTER SEND`
+                : "TAB VIEWS  ↑↓ STATION  ENTER SEND  ^C INTERRUPT/EXIT"}
             </Text>
           </Box>
           <Box width="34%" justifyContent="flex-end">
@@ -508,7 +579,9 @@ export function App(props: AppProps) {
         <Text color={state.diagnostic ? theme.red : theme.dim} wrap="truncate-end">
           {state.diagnostic
             ? state.diagnostic
-            : "TAB VIEWS  ↑↓ STATION  ^C INTERRUPT/EXIT  ^G AUDIO  /help"}
+            : scene === "operations" || scene === "transcript"
+              ? `${commControls}  TAB VIEWS  ^C INTERRUPT/EXIT  /help`
+              : "TAB VIEWS  ↑↓ STATION  ^C INTERRUPT/EXIT  ^G AUDIO  /help"}
         </Text>
       )}
     </Box>

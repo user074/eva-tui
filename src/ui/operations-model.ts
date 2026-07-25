@@ -17,12 +17,22 @@ export interface Station {
   status: string;
   trace: string;
   eventCount: number;
+  recent?: string[];
 }
 
 export interface ImpactNode {
   path: string;
   label: string;
   directory: string;
+}
+
+export interface PropagationNode extends ImpactNode {
+  kind: "WRITE" | "READ" | "SIGNAL";
+}
+
+export interface OperationSpine {
+  source: "plan" | "live";
+  steps: AppState["plan"];
 }
 
 const STATUS_GLYPHS = {
@@ -64,6 +74,87 @@ export function conversationSynchronization(
     state.conversationSynchronization,
     now,
   );
+}
+
+export function currentTurnActivities(state: AppState): ActivityItem[] {
+  if (!state.turnId) return [];
+  return state.activity.filter((item) => item.turnId === state.turnId);
+}
+
+function terminalTurn(state: AppState): boolean {
+  return ["complete", "interrupted", "failed"].includes(state.turn);
+}
+
+export function operationSpine(state: AppState): OperationSpine {
+  if (state.plan.length > 0) {
+    return { source: "plan", steps: state.plan };
+  }
+
+  const hasDirective = state.transcript.some((entry) => entry.role === "operator");
+  if (!hasDirective && state.turn === "idle") {
+    return { source: "live", steps: [] };
+  }
+
+  const activities = currentTurnActivities(state);
+  const hasActivity = activities.length > 0;
+  const activityRunning = activities.some((item) =>
+    /run|progress|start|active/i.test(item.status),
+  );
+  const codexStreaming = state.transcript.some(
+    (entry) => entry.role === "codex" && entry.streaming,
+  );
+  const finished = terminalTurn(state);
+  const failed = state.turn === "failed";
+  const synthesisActive =
+    state.turn === "running" &&
+    (codexStreaming || (hasActivity && !activityRunning));
+
+  return {
+    source: "live",
+    steps: [
+      {
+        step: "DIRECTIVE ACQUIRED",
+        status: hasDirective ? "completed" : "in_progress",
+      },
+      {
+        step: "ASSESS REQUEST",
+        status:
+          hasActivity || codexStreaming || finished
+            ? "completed"
+            : state.turn === "running"
+              ? "in_progress"
+              : "pending",
+      },
+      {
+        step: hasActivity ? "OPERATE SYSTEMS" : "DIRECT RESPONSE PATH",
+        status: failed
+          ? "failed"
+          : activityRunning
+            ? "in_progress"
+            : hasActivity || codexStreaming || finished
+              ? "completed"
+              : "pending",
+      },
+      {
+        step: "SYNTHESIZE RESPONSE",
+        status: failed
+          ? "failed"
+          : finished
+            ? "completed"
+            : synthesisActive || codexStreaming
+              ? "in_progress"
+              : "pending",
+      },
+      {
+        step: "RETURN CONTROL",
+        status: failed
+          ? "failed"
+          : finished
+            ? "completed"
+            : "pending",
+      },
+    ],
+  };
 }
 
 function statusKind(status: string): keyof typeof STATUS_GLYPHS {
@@ -114,6 +205,7 @@ function activityStation(
     status: latestStatus(items),
     trace: traceForStatuses(items.map((item) => item.status)),
     eventCount: items.length,
+    recent: items.slice(-3).map((item) => item.label),
   };
 }
 
@@ -137,7 +229,10 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
     ["dynamicToolCall", "mcpToolCall", "webSearch", "imageView"].includes(item.type),
   );
   const agents = state.activity.filter((item) => item.type === "collabAgentToolCall");
-  const sync = planProgress(state);
+  const spine = operationSpine(state);
+  const completedSpineSteps = spine.steps.filter(
+    (step) => step.status === "completed",
+  ).length;
   const contextPercent =
     state.tokens.contextWindow > 0
       ? Math.round((state.tokens.total / state.tokens.contextWindow) * 100)
@@ -151,6 +246,7 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
       status: state.connection === "online" ? "ONLINE" : state.connection.toUpperCase(),
       trace: traceForStatuses([state.connection]),
       eventCount: state.threadId ? 1 : 0,
+      recent: state.notice ? [state.notice] : [],
     },
     activityStation("shell", "SHELL-01", "COMMAND EXECUTION", shell),
     activityStation("git", "GIT CONTROL", "VERSION OPERATIONS", git),
@@ -164,6 +260,7 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
       status: audioStatus,
       trace: traceForStatuses([audioStatus === "OFF" ? "waiting" : "active"]),
       eventCount: audioStatus === "OFF" ? 0 : 1,
+      recent: [audioStatus],
     },
     {
       id: "thread",
@@ -179,21 +276,23 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
               : "STANDBY",
       trace: traceForStatuses([state.turn]),
       eventCount: state.transcript.length,
+      recent: state.transcript.slice(-2).map((entry) => entry.text),
     },
     {
       id: "plan",
-      label: "PLAN PROGRESS",
-      detail: `${sync.completed}/${sync.total} STEPS`,
+      label: "OPERATION SPINE",
+      detail: `${completedSpineSteps}/${spine.steps.length} ${spine.source === "plan" ? "PLAN" : "LIVE"} STEPS`,
       status:
-        sync.total === 0
+        spine.steps.length === 0
           ? "STANDBY"
-          : sync.percent === 100
+          : completedSpineSteps === spine.steps.length
             ? "COMPLETE"
             : state.turn === "running"
               ? "ACTIVE"
               : "WAITING",
-      trace: traceForStatuses(state.plan.map((step) => step.status)),
-      eventCount: sync.total,
+      trace: traceForStatuses(spine.steps.map((step) => step.status)),
+      eventCount: spine.steps.length,
+      recent: spine.steps.slice(-3).map((step) => step.step),
     },
     {
       id: "context",
@@ -202,6 +301,7 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
       status: contextPercent >= 85 ? "CAUTION" : "NOMINAL",
       trace: traceForStatuses([contextPercent >= 85 ? "running" : "ready"]),
       eventCount: state.tokens.total,
+      recent: [`${state.tokens.total} TOKENS`],
     },
     {
       id: "diff",
@@ -212,6 +312,7 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
         state.diff.files.length > 0 ? "running" : "ready",
       ]),
       eventCount: state.diff.files.length,
+      recent: state.diff.files.slice(-3),
     },
     {
       id: "approval",
@@ -220,6 +321,7 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
       status: state.approval ? "AWAITING" : "READY",
       trace: traceForStatuses([state.approval ? "running" : "ready"]),
       eventCount: state.approval ? 1 : 0,
+      recent: state.approval ? [state.approval.title] : [],
     },
     ...state.mcp.map(mcpStation),
   ];
@@ -243,6 +345,77 @@ export function impactNodes(state: AppState): ImpactNode[] {
       directory: parts.length > 1 ? parts.slice(0, -1).join("/") : ".",
     };
   });
+}
+
+function propagationNode(path: string, kind: PropagationNode["kind"]): PropagationNode {
+  const parts = path.split("/");
+  return {
+    path,
+    label: parts.at(-1) ?? path,
+    directory: parts.length > 1 ? parts.slice(0, -1).join("/") : ".",
+    kind,
+  };
+}
+
+function signalLabel(item: ActivityItem): string {
+  if (item.type === "commandExecution") return "SHELL CHANNEL";
+  if (item.type === "fileChange") return "WORKSPACE WRITE";
+  if (item.type === "webSearch") return "NETWORK SEARCH";
+  if (item.type === "mcpToolCall") return "MCP LINK";
+  if (item.type === "dynamicToolCall") return "TOOL BUS";
+  if (item.type === "collabAgentToolCall") return "AGENT LINK";
+  if (item.type === "imageView") return "IMAGE SENSOR";
+  return item.type.replaceAll(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
+}
+
+export function propagationNodes(state: AppState): PropagationNode[] {
+  const nodes = new Map<string, PropagationNode>();
+  for (const path of state.diff.files) {
+    nodes.set(path, propagationNode(path, "WRITE"));
+  }
+
+  const activities = currentTurnActivities(state);
+  for (const item of activities) {
+    for (const path of item.targets ?? []) {
+      if (!nodes.has(path)) {
+        nodes.set(
+          path,
+          propagationNode(path, item.type === "fileChange" ? "WRITE" : "READ"),
+        );
+      }
+    }
+  }
+
+  if (nodes.size === 0) {
+    for (const item of activities) {
+      const label = signalLabel(item);
+      const key = `signal:${item.type}`;
+      nodes.set(key, {
+        path: key,
+        label,
+        directory: "LIVE CHANNEL",
+        kind: "SIGNAL",
+      });
+    }
+  }
+
+  if (nodes.size === 0 && state.turn === "running") {
+    nodes.set("signal:model", {
+      path: "signal:model",
+      label: "MODEL SYNTHESIS",
+      directory: "CODEX CORE",
+      kind: "SIGNAL",
+    });
+  } else if (nodes.size === 0 && terminalTurn(state)) {
+    nodes.set("signal:response", {
+      path: "signal:response",
+      label: state.turn === "failed" ? "FAULT RETURNED" : "RESPONSE DELIVERED",
+      directory: "COMM",
+      kind: "SIGNAL",
+    });
+  }
+
+  return [...nodes.values()];
 }
 
 export function approvalSeverity(approval: PendingApproval): {

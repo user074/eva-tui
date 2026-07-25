@@ -246,7 +246,7 @@ test("conversation synchronization frame reserves a readable waveform field", ()
     .rows()
     .filter((row) => row.some((cell) => /[\u2800-\u28ff]/u.test(cell.char)));
 
-  assert.match(output, /HUMAN↔CODEX/);
+  assert.match(output, /CODEX SYNCHRONIZATION RATIO/);
   assert.match(output, /LINK DECAY/);
   assert.ok(brailleRows.length >= 3);
 });

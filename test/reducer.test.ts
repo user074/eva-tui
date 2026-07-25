@@ -99,6 +99,43 @@ test("plan, token, and diff telemetry uses protocol values", () => {
   });
 });
 
+test("current app-server plan status is normalized for the operation spine", () => {
+  const state = notification("turn/plan/updated", {
+    threadId: "thread-1",
+    turnId: "turn-1",
+    plan: [{ step: "Inspect", status: "inProgress" }],
+  });
+
+  assert.equal(state.plan[0]?.status, "in_progress");
+});
+
+test("file-change items populate diff telemetry without a turn diff event", () => {
+  const state = notification("item/completed", {
+    threadId: "thread-1",
+    turnId: "turn-1",
+    item: {
+      id: "change-1",
+      type: "fileChange",
+      status: "completed",
+      changes: [
+        {
+          path: "src/app.tsx",
+          kind: { type: "update", move_path: null },
+          diff: "@@ -1 +1,2 @@\n-old\n+new\n+another",
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(state.diff, {
+    additions: 2,
+    deletions: 1,
+    files: ["src/app.tsx"],
+  });
+  assert.deepEqual(state.activity[0]?.targets, ["src/app.tsx"]);
+  assert.equal(state.activity[0]?.turnId, "turn-1");
+});
+
 test("command approval produces a decision panel", () => {
   const request: ServerRequest = {
     id: 77,

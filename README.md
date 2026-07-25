@@ -61,16 +61,21 @@ loopback API.
 - Uses an operations-first command-center screen instead of making chat the
   primary canvas.
 - Provides Operations, Stations, Impact, and Transcript scenes.
-- Renders MCP servers, shell commands, git, workspace changes, tool calls,
-  agents, and audio as a rib-cage Station Matrix derived from recorded state.
-- Retains affected filenames from Codex diff events and visualizes them as a
-  change-propagation field.
+- Keeps a compact Station Bus on the main Operations screen, with Station
+  Matrix drill-downs for recent MCP, tool, agent, shell, Git, file, and audio
+  activity.
+- Builds the Propagation Field from ordinary Codex item events: files being
+  read, files being written, and subsystem signals. Turn diff events enrich
+  the field when available.
 - Reserves a large Operations scope for live human↔Codex synchronization.
   Fast consecutive human replies raise the ratio; once Codex has yielded,
   unanswered time decays it. The scope continuously converges or separates
   three parameter-distinct sine channels to express that link.
-- Shows actual plan completion, context use, diff statistics, MCP readiness,
-  and command/tool/file activity.
+- Keeps the Operation Spine active on every turn. It shows Codex's formal plan
+  when one is emitted, and otherwise derives live phases from the normal turn
+  and item lifecycle.
+- Shows context use, diff statistics, MCP readiness, and
+  command/tool/file activity.
 - Renders approvals and failed turns as full-screen `警告` incident consoles.
 - Includes explicitly labeled, non-mutating earthquake and tsunami visual
   simulations.
@@ -153,8 +158,8 @@ port.
 
 The first graphical version includes:
 
-- a live Operations display with turn state, plan synchronization, transcript,
-  activity, token use, and workspace impact;
+- a live Operations display with turn state, an always-active Operation Spine,
+  transcript, activity, token use, and workspace propagation;
 - a responsive Station Matrix made from the attributed upstream station blade
   SVGs and state-derived system nodes;
 - a workspace Impact field and full Transcript display;
@@ -175,7 +180,9 @@ security model are documented in
 | --- | --- |
 | `Enter` | Send the composer text to Codex |
 | `Tab` / `Shift-Tab` | Cycle Operations, Stations, Impact, and Transcript |
-| `Up` / `Down` | Select and inspect a Station Matrix node |
+| Mouse wheel / `Up` / `Down` | Scroll Operations COMM or the Transcript view |
+| `Page Up` / `Page Down` | Scroll the active conversation viewport three lines |
+| `Up` / `Down` on Stations | Select and inspect a Station Matrix node |
 | `Escape` | Return to Operations or dismiss a simulation |
 | `Ctrl-C` | Interrupt an active turn; exit while idle |
 | `Ctrl-G` | Toggle audio |
@@ -184,6 +191,11 @@ security model are documented in
 | `A` | Accept for the session |
 | `N` | Decline |
 | `Escape` | Deny and cancel the turn |
+
+In Apple Terminal, make sure **View → Allow Mouse Reporting** is checked for
+trackpad scrolling (`Command-R` toggles it). Terminal.app will not deliver
+trackpad events to a TUI when this setting is disabled, even if the application
+requests mouse reporting.
 
 Slash commands:
 

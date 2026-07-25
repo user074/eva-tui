@@ -71,29 +71,92 @@ function itemLabel(item: JsonObject): string {
   return type.replaceAll(/([a-z])([A-Z])/g, "$1 $2");
 }
 
+function normalizeStatus(value: string, fallback: string): string {
+  const status = value || fallback;
+  if (/^in_?progress$/i.test(status)) return "running";
+  if (/^(complete|completed|success|succeeded)$/i.test(status)) return "completed";
+  if (/^(fail|failed|error)$/i.test(status)) return "failed";
+  return status;
+}
+
+function itemTargets(item: JsonObject): string[] {
+  const targets = new Set<string>();
+  const changes = Array.isArray(item.changes) ? item.changes : [];
+  for (const rawChange of changes) {
+    const path = asString(asObject(rawChange).path);
+    if (path) targets.add(path);
+  }
+  const actions = Array.isArray(item.commandActions) ? item.commandActions : [];
+  for (const rawAction of actions) {
+    const path = asString(asObject(rawAction).path);
+    if (path) targets.add(path);
+  }
+  const directPath = asString(item.path);
+  if (directPath) targets.add(directPath);
+  return [...targets];
+}
+
 function upsertActivity(
   activity: ActivityItem[],
   item: JsonObject,
   fallbackStatus: string,
+  turnId: string,
 ): ActivityItem[] {
   const id = asString(item.id);
   const type = asString(item.type);
   if (!id || !type || ["agentMessage", "userMessage", "reasoning", "plan"].includes(type)) {
     return activity;
   }
+  const targets = itemTargets(item);
   const nextItem: ActivityItem = {
     id,
     type,
     label: itemLabel(item),
-    status: asString(item.status, fallbackStatus),
+    status: normalizeStatus(asString(item.status), fallbackStatus),
+    ...(turnId ? { turnId } : {}),
+    ...(targets.length > 0 ? { targets } : {}),
   };
   const index = activity.findIndex((existing) => existing.id === id);
   if (index < 0) {
-    return cap([...activity, nextItem], 10);
+    return cap([...activity, nextItem], 60);
   }
   const next = [...activity];
   next[index] = nextItem;
   return next;
+}
+
+function diffFromChanges(value: unknown): {
+  additions: number;
+  deletions: number;
+  files: string[];
+} {
+  const changes = Array.isArray(value) ? value : [];
+  let additions = 0;
+  let deletions = 0;
+  const files = new Set<string>();
+  for (const rawChange of changes) {
+    const change = asObject(rawChange);
+    const path = asString(change.path);
+    if (path) files.add(path);
+    const stats = diffStats(asString(change.diff));
+    additions += stats.additions;
+    deletions += stats.deletions;
+  }
+  return { additions, deletions, files: [...files] };
+}
+
+function aggregateDiffItems(
+  items: AppState["diffItems"],
+): AppState["diff"] {
+  let additions = 0;
+  let deletions = 0;
+  const files = new Set<string>();
+  for (const diff of Object.values(items)) {
+    additions += diff.additions;
+    deletions += diff.deletions;
+    for (const path of diff.files) files.add(path);
+  }
+  return { additions, deletions, files: [...files] };
 }
 
 export function diffStats(diff: string): {
@@ -258,6 +321,7 @@ function reduceNotification(
       notice: "SYNCHRONIZATION IN PROGRESS",
       plan: [],
       diff: { additions: 0, deletions: 0, files: [] },
+      diffItems: {},
     };
   }
 
@@ -282,6 +346,7 @@ function reduceNotification(
     const item = asObject(params.item);
     const type = asString(item.type);
     const completed = method === "item/completed";
+    const turnId = asString(params.turnId, state.turnId);
     let transcript = state.transcript;
     if (type === "agentMessage" && completed) {
       transcript = upsertTranscript(transcript, {
@@ -291,14 +356,43 @@ function reduceNotification(
         streaming: false,
       });
     }
+    let diffItems = state.diffItems;
+    let diff = state.diff;
+    if (type === "fileChange" && Array.isArray(item.changes)) {
+      const itemId = asString(item.id);
+      if (itemId) {
+        diffItems = {
+          ...diffItems,
+          [itemId]: diffFromChanges(item.changes),
+        };
+        diff = aggregateDiffItems(diffItems);
+      }
+    }
     return {
       ...state,
       transcript,
+      diff,
+      diffItems,
       activity: upsertActivity(
         state.activity,
         item,
         completed ? "completed" : "running",
+        turnId,
       ),
+    };
+  }
+
+  if (method === "item/fileChange/patchUpdated") {
+    const itemId = asString(params.itemId);
+    if (!itemId) return state;
+    const diffItems = {
+      ...state.diffItems,
+      [itemId]: diffFromChanges(params.changes),
+    };
+    return {
+      ...state,
+      diffItems,
+      diff: aggregateDiffItems(diffItems),
     };
   }
 
@@ -310,7 +404,9 @@ function reduceNotification(
         const item = asObject(entry);
         return {
           step: asString(item.step, asString(item.text, "plan step")),
-          status: asString(item.status, "pending"),
+          status: /^in_?progress$/i.test(asString(item.status))
+            ? "in_progress"
+            : asString(item.status, "pending"),
         };
       }),
     };
@@ -370,7 +466,7 @@ function reduceNotification(
     return {
       ...state,
       turn: failed ? "failed" : interrupted ? "interrupted" : "complete",
-      turnId: "",
+      turnId: asString(turn.id, state.turnId),
       notice: failed ? "OPERATION FAILED" : interrupted ? "OPERATION INTERRUPTED" : "OPERATION COMPLETE",
       transcript: state.transcript.map((entry) => ({ ...entry, streaming: false })),
       conversationSynchronization: recordCodexYield(

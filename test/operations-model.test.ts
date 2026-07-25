@@ -8,7 +8,9 @@ import {
   buildStations,
   cycleScene,
   impactNodes,
+  operationSpine,
   planProgress,
+  propagationNodes,
 } from "../src/ui/operations-model.js";
 
 test("scene navigation cycles in both directions", () => {
@@ -82,6 +84,66 @@ test("impact nodes preserve real diff paths and group directories", () => {
   assert.deepEqual(impactNodes(state), [
     { path: "src/app.tsx", label: "app.tsx", directory: "src" },
     { path: "README.md", label: "README.md", directory: "." },
+  ]);
+});
+
+test("operation spine remains active when Codex emits no formal plan", () => {
+  const state = {
+    ...initialState,
+    turn: "running" as const,
+    turnId: "turn-1",
+    transcript: [
+      ...initialState.transcript,
+      {
+        id: "operator-1",
+        role: "operator" as const,
+        text: "Inspect the project",
+        streaming: false,
+      },
+    ],
+    activity: [
+      {
+        id: "command-1",
+        type: "commandExecution",
+        label: "rg --files",
+        status: "running",
+        turnId: "turn-1",
+      },
+    ],
+  };
+
+  const spine = operationSpine(state);
+  assert.equal(spine.source, "live");
+  assert.equal(
+    spine.steps.find((step) => step.step === "OPERATE SYSTEMS")?.status,
+    "in_progress",
+  );
+});
+
+test("propagation field uses working-set reads before any file is changed", () => {
+  const state = {
+    ...initialState,
+    turn: "running" as const,
+    turnId: "turn-1",
+    activity: [
+      {
+        id: "command-1",
+        type: "commandExecution",
+        label: "sed -n 1,80p src/app.tsx",
+        status: "completed",
+        turnId: "turn-1",
+        targets: ["src/app.tsx"],
+      },
+    ],
+  };
+
+  assert.deepEqual(propagationNodes(state), [
+    {
+      path: "src/app.tsx",
+      label: "app.tsx",
+      directory: "src",
+      kind: "READ",
+    },
   ]);
 });
 

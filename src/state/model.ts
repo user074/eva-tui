@@ -25,6 +25,8 @@ export interface ActivityItem {
   type: string;
   label: string;
   status: string;
+  turnId?: string;
+  targets?: string[];
 }
 
 export interface PlanStep {
@@ -44,6 +46,8 @@ export interface DiffState {
   deletions: number;
   files: string[];
 }
+
+export type DiffItemsState = Record<string, DiffState>;
 
 export interface McpState {
   name: string;
@@ -80,6 +84,7 @@ export interface AppState {
   plan: PlanStep[];
   tokens: TokenState;
   diff: DiffState;
+  diffItems: DiffItemsState;
   mcp: McpState[];
   conversationSynchronization: ConversationSynchronizationState;
   approval: PendingApproval | null;
@@ -125,6 +130,7 @@ export const initialState: AppState = {
     deletions: 0,
     files: [],
   },
+  diffItems: {},
   mcp: [],
   conversationSynchronization: {
     percent: 18,

@@ -4,13 +4,19 @@ import { Box, Text } from "ink";
 import type { GraphicsBackend } from "../graphics/kitty.js";
 import { easeDisplayedSynchronization } from "../state/conversation-synchronization.js";
 import type { AppState, PendingApproval, PlanStep } from "../state/model.js";
-import { Panel, Transcript } from "./components.js";
+import { Panel } from "./components.js";
+import {
+  communicationTranscriptText,
+  communicationViewport,
+} from "./communication-viewport.js";
 import {
   activityTrace,
   approvalSeverity,
   buildStations,
   conversationSynchronization,
   impactNodes,
+  operationSpine,
+  propagationNodes,
   SCENES,
   shortLabel,
   type Scene,
@@ -102,7 +108,7 @@ function ConversationSynchronizationPanel({
   const tone = synchronizationTone(clock.displayedPercent);
   const responseDetail =
     synchronization.waitingMs > 0
-      ? `HUMAN WAIT ${durationLabel(synchronization.waitingMs)}`
+      ? `OPERATOR WAIT ${durationLabel(synchronization.waitingMs)}`
       : synchronization.lastResponseMs === null
         ? "RESPONSE --"
         : `LAST RESPONSE ${durationLabel(synchronization.lastResponseMs)}`;
@@ -116,8 +122,8 @@ function ConversationSynchronizationPanel({
     rows: scopeRows,
     phase: clock.phase,
     percent: clock.displayedPercent,
-    status: humanComposing ? "HUMAN COMPOSING" : synchronization.status,
-    detail: `${humanComposing ? "HUMAN COMPOSING" : responseDetail} // ${inputDetail} // ${synchronization.exchanges} EXCHANGES`,
+    status: humanComposing ? "INPUT ACTIVE" : synchronization.status,
+    detail: `${humanComposing ? "INPUT ACTIVE" : responseDetail} // ${inputDetail} // ${synchronization.exchanges} EXCHANGES`,
   });
 
   return (
@@ -133,7 +139,7 @@ function ConversationSynchronizationPanel({
         justifyContent="space-between"
       >
         <Text color={theme.black} bold>
-          同期率 / HUMAN↔CODEX SYNCHRONIZATION
+          同期率 / CODEX SYNCHRONIZATION RATIO
         </Text>
         <Text color={theme.black} bold>
           {clock.displayedPercent.toFixed(1).padStart(5, "0")}%
@@ -185,9 +191,11 @@ export function SceneTabs({ scene }: { scene: Scene }): ReactNode {
 function PlanSpine({
   plan,
   maxItems,
+  source,
 }: {
   plan: PlanStep[];
   maxItems: number;
+  source: "plan" | "live";
 }): ReactNode {
   const visible = plan.slice(-maxItems);
   if (visible.length === 0) {
@@ -196,13 +204,16 @@ function PlanSpine({
         <Text color={theme.dim}>╲ │ ╱</Text>
         <Text color={theme.orange} bold>◇ STANDBY ◇</Text>
         <Text color={theme.dim}>╱ │ ╲</Text>
-        <Text color={theme.dim}>AWAITING OPERATION PLAN</Text>
+        <Text color={theme.dim}>AWAITING OPERATOR DIRECTIVE</Text>
       </Box>
     );
   }
 
   return (
     <Box flexDirection="column">
+      <Text color={theme.dim}>
+        {source === "plan" ? "CODEX PLAN TELEMETRY" : "LIVE TURN TELEMETRY"}
+      </Text>
       {visible.map((step, index) => {
         const running = step.status === "in_progress";
         const completed = step.status === "completed";
@@ -234,7 +245,8 @@ function ImpactField({
   width: number;
   compact: boolean;
 }): ReactNode {
-  const nodes = impactNodes(state).slice(0, width >= 45 ? 8 : 5);
+  const allNodes = propagationNodes(state);
+  const nodes = allNodes.slice(0, width >= 45 ? 8 : 5);
   if (nodes.length === 0) {
     if (compact) {
       return (
@@ -264,7 +276,7 @@ function ImpactField({
           {" SOURCE DELTA "}
         </Text>
         <Text color={theme.amber} wrap="truncate-end">
-          {nodes.map((node) => node.label).join(" ◇ ")}
+          {nodes.map((node) => `${node.kind}:${node.label}`).join(" ◇ ")}
         </Text>
       </Box>
     );
@@ -279,12 +291,117 @@ function ImpactField({
       <Text color={theme.orange}>╱       │       ╲</Text>
       {nodes.map((node, index) => (
         <Text key={node.path} color={index % 3 === 0 ? theme.green : theme.amber}>
-          {index % 2 === 0 ? "◢" : "◣"} {shortLabel(node.path, Math.max(12, width - 8))}
+          {index % 2 === 0 ? "◢" : "◣"} {node.kind.padEnd(6)}{" "}
+          {(() => {
+            const available = Math.max(12, width - 15);
+            const target = node.path.startsWith("signal:") ? node.label : node.path;
+            if (target.length <= available) return target;
+            const tail = target.split("/").slice(-2).join("/");
+            return `…/${shortLabel(tail, Math.max(1, available - 2))}`;
+          })()}
         </Text>
       ))}
-      {state.diff.files.length > nodes.length ? (
-        <Text color={theme.dim}>+{state.diff.files.length - nodes.length} MORE NODES</Text>
+      {allNodes.length > nodes.length ? (
+        <Text color={theme.dim}>+{allNodes.length - nodes.length} MORE NODES</Text>
       ) : null}
+    </Box>
+  );
+}
+
+function OperationsStationRail({
+  state,
+  audioStatus,
+  columns,
+}: {
+  state: AppState;
+  audioStatus: string;
+  columns: number;
+}): ReactNode {
+  const preferred =
+    columns >= 96
+      ? ["codex", "plan", "shell", "git", "workspace", "tools"]
+      : ["plan", "shell", "workspace", "tools"];
+  const aliases: Record<string, string> = {
+    codex: "CORE",
+    plan: "SPINE",
+    shell: "SHELL",
+    git: "GIT",
+    workspace: "FILES",
+    tools: "TOOLS",
+  };
+  const allStations = buildStations(state, audioStatus);
+  const stations = preferred
+    .map((id) => allStations.find((station) => station.id === id))
+    .filter((station) => station !== undefined);
+  return (
+    <Box flexShrink={0}>
+      <Text color={theme.dim}>STATION BUS </Text>
+      {stations.map((station) => (
+        <Text
+          key={station.id}
+          color={statusColor(station.status)}
+          bold={/run|active|await/i.test(station.status)}
+        >
+          {` ${stateGlyph(station.status)}${aliases[station.id] ?? shortLabel(station.label, 7)}:${station.eventCount} `}
+        </Text>
+      ))}
+    </Box>
+  );
+}
+
+function CommunicationPanel({
+  state,
+  columns,
+  rows,
+  scrollOffset,
+}: {
+  state: AppState;
+  columns: number;
+  rows: number;
+  scrollOffset: number;
+}): ReactNode {
+  const latest = state.transcript.at(-1);
+  const viewportRows =
+    rows >= 46 ? 12 : rows >= 38 ? 9 : rows >= 34 ? 7 : 4;
+  const viewport = communicationViewport(
+    communicationTranscriptText(state.transcript),
+    Math.max(12, columns - 6),
+    viewportRows,
+    scrollOffset,
+  );
+  const role =
+    latest?.role === "operator"
+      ? "YOU"
+      : latest?.role === "codex"
+        ? "CODEX"
+        : "SYSTEM";
+  const canScrollUp =
+    viewport.scrollFromBottom < viewport.maxScroll ? "▲" : " ";
+  const canScrollDown = viewport.scrollFromBottom > 0 ? "▼" : " ";
+
+  return (
+    <Box
+      borderStyle="single"
+      borderColor={theme.dim}
+      paddingX={1}
+      flexDirection="column"
+      flexShrink={0}
+    >
+      <Box justifyContent="space-between">
+        <Text color={theme.dim}>
+          COMM / 通信 · <Text color={theme.cyan}>{state.transcript.length} MSG</Text>
+          <Text color={theme.dim}> · LIVE {role}</Text>
+        </Text>
+        <Text color={theme.dim}>
+          {canScrollUp}{canScrollDown} L{viewport.firstLine}-{viewport.lastLine}/{viewport.totalLines}
+          {" · WHEEL/↑↓"}
+        </Text>
+      </Box>
+      {Array.from({ length: viewportRows }, (_, index) => (
+        <Text key={index} color={theme.white} wrap="truncate-end">
+          {viewport.lines[index] || " "}
+        </Text>
+      ))}
     </Box>
   );
 }
@@ -293,17 +410,22 @@ export function OperationsScreen({
   state,
   columns,
   rows,
+  audioStatus,
   humanComposing = false,
+  commScrollOffset = 0,
 }: {
   state: AppState;
   columns: number;
   rows: number;
+  audioStatus: string;
   humanComposing?: boolean;
+  commScrollOffset?: number;
 }): ReactNode {
   const wide = columns >= 96;
   const compact = rows < 28;
   const traceWidth = Math.max(18, Math.min(52, columns - 42));
   const active = state.activity.at(-1);
+  const spine = operationSpine(state);
 
   return (
     <Box flexDirection="column" flexGrow={1}>
@@ -321,8 +443,9 @@ export function OperationsScreen({
           {...(wide ? { width: "34%" } : { flexGrow: 1 })}
         >
           <PlanSpine
-            plan={state.plan}
+            plan={spine.steps}
             maxItems={compact ? 3 : Math.max(3, Math.min(7, rows - 23))}
+            source={spine.source}
           />
         </Panel>
 
@@ -363,13 +486,18 @@ export function OperationsScreen({
       </Box>
 
       {!compact ? (
-        <Box borderStyle="single" borderColor={theme.dim} paddingX={1} flexShrink={0}>
-          <Text color={theme.dim}>COMM / 通信 </Text>
-          <Text color={theme.white} wrap="truncate-end">
-            {state.transcript.at(-1)?.text || "Link initialized."}
-          </Text>
-        </Box>
+        <CommunicationPanel
+          state={state}
+          columns={columns}
+          rows={rows}
+          scrollOffset={commScrollOffset}
+        />
       ) : null}
+      <OperationsStationRail
+        state={state}
+        audioStatus={audioStatus}
+        columns={columns}
+      />
     </Box>
   );
 }
@@ -446,18 +574,28 @@ export function StationsScreen({
         )}
       </Box>
       {selected ? (
-        <Box
-          backgroundColor={statusColor(selected.status)}
-          paddingX={1}
-          flexShrink={0}
-        >
-          <Text color={theme.black} bold>
-            {stateGlyph(selected.status)} {selected.label}
-          </Text>
-          <Text color={theme.black}> · {selected.detail} · </Text>
-          <Text color={theme.black}>{selected.status}</Text>
-          <Text color={theme.black}> · {selected.eventCount} EVENTS · {selected.trace}</Text>
-        </Box>
+        <>
+          {selected.recent?.at(-1) ? (
+            <Box borderStyle="single" borderColor={theme.dim} paddingX={1} flexShrink={0}>
+              <Text color={theme.dim}>LATEST </Text>
+              <Text color={theme.white} wrap="truncate-end">
+                {selected.recent.at(-1)}
+              </Text>
+            </Box>
+          ) : null}
+          <Box
+            backgroundColor={statusColor(selected.status)}
+            paddingX={1}
+            flexShrink={0}
+          >
+            <Text color={theme.black} bold>
+              {stateGlyph(selected.status)} {selected.label}
+            </Text>
+            <Text color={theme.black}> · {selected.detail} · </Text>
+            <Text color={theme.black}>{selected.status}</Text>
+            <Text color={theme.black}> · {selected.eventCount} EVENTS · {selected.trace}</Text>
+          </Box>
+        </>
       ) : null}
       <Text color={theme.dim}>↑/↓ INSPECT STATION · SIGNAL GLYPHS ARE RECORDED EVENT STATES</Text>
     </Box>
@@ -534,18 +672,38 @@ export function TranscriptScreen({
   state,
   rows,
   columns,
+  scrollOffset,
 }: {
   state: AppState;
   rows: number;
   columns: number;
+  scrollOffset: number;
 }): ReactNode {
+  const viewportRows = Math.max(3, rows - 10);
+  const viewport = communicationViewport(
+    communicationTranscriptText(state.transcript),
+    Math.max(12, columns - 6),
+    viewportRows,
+    scrollOffset,
+  );
+  const canScrollUp =
+    viewport.scrollFromBottom < viewport.maxScroll ? "▲" : " ";
+  const canScrollDown = viewport.scrollFromBottom > 0 ? "▼" : " ";
+
   return (
     <Panel title="通信記録 / FULL TRANSCRIPT" accent={theme.orange} flexGrow={1}>
-      <Transcript
-        entries={state.transcript}
-        limit={Math.max(3, Math.floor((rows - 10) / 4))}
-        maxEntryChars={Math.max(200, Math.floor(columns * 3.2))}
-      />
+      <Box justifyContent="space-between" flexShrink={0}>
+        <Text color={theme.cyan}>{state.transcript.length} MESSAGES</Text>
+        <Text color={theme.dim}>
+          {canScrollUp}{canScrollDown} L{viewport.firstLine}-{viewport.lastLine}/{viewport.totalLines}
+          {" · WHEEL/↑↓/PGUP/PGDN"}
+        </Text>
+      </Box>
+      {Array.from({ length: viewportRows }, (_, index) => (
+        <Text key={index} color={theme.white} wrap="truncate-end">
+          {viewport.lines[index] || " "}
+        </Text>
+      ))}
     </Panel>
   );
 }

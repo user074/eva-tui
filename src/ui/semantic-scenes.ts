@@ -56,7 +56,7 @@ export function buildSynchronizationFrame(
     background: theme.black,
   });
   const label = truncateTuiText(
-    `HUMAN↔CODEX // ${options.status} // ${options.detail}`,
+    `CODEX SYNCHRONIZATION RATIO // ${options.status} // ${options.detail}`,
     frame.width,
   );
   frame.text(0, 0, label, {
