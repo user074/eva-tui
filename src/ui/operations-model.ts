@@ -4,6 +4,7 @@ import type {
   McpState,
   PendingApproval,
 } from "../state/model.js";
+import { conversationSynchronizationAt } from "../state/conversation-synchronization.js";
 
 export const SCENES = ["operations", "stations", "impact", "transcript"] as const;
 export type Scene = (typeof SCENES)[number];
@@ -39,7 +40,7 @@ export function cycleScene(
   return SCENES[(index + direction + SCENES.length) % SCENES.length] ?? "operations";
 }
 
-export function synchronization(state: AppState): {
+export function planProgress(state: AppState): {
   completed: number;
   total: number;
   percent: number | null;
@@ -53,6 +54,16 @@ export function synchronization(state: AppState): {
         ? null
         : Math.round((completed / state.plan.length) * 100),
   };
+}
+
+export function conversationSynchronization(
+  state: AppState,
+  now: number,
+): ReturnType<typeof conversationSynchronizationAt> {
+  return conversationSynchronizationAt(
+    state.conversationSynchronization,
+    now,
+  );
 }
 
 function statusKind(status: string): keyof typeof STATUS_GLYPHS {
@@ -126,7 +137,7 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
     ["dynamicToolCall", "mcpToolCall", "webSearch", "imageView"].includes(item.type),
   );
   const agents = state.activity.filter((item) => item.type === "collabAgentToolCall");
-  const sync = synchronization(state);
+  const sync = planProgress(state);
   const contextPercent =
     state.tokens.contextWindow > 0
       ? Math.round((state.tokens.total / state.tokens.contextWindow) * 100)
@@ -171,7 +182,7 @@ export function buildStations(state: AppState, audioStatus: string): Station[] {
     },
     {
       id: "plan",
-      label: "PLAN SYNC",
+      label: "PLAN PROGRESS",
       detail: `${sync.completed}/${sync.total} STEPS`,
       status:
         sync.total === 0

@@ -162,7 +162,7 @@ export function CompactTelemetry({ state }: { state: AppState }): ReactNode {
   return (
     <Box flexDirection="column">
       <Text>
-        <Text color={theme.purple}>SYNC {plan}</Text>
+        <Text color={theme.purple}>PLAN {plan}</Text>
         <Text color={theme.dim}> │ </Text>
         <Text color={theme.cyan}>TOK {state.tokens.total.toLocaleString()}</Text>
         <Text color={theme.dim}> │ </Text>
@@ -206,7 +206,7 @@ export function Telemetry({ state }: { state: AppState }): ReactNode {
 
   return (
     <Box flexDirection="column">
-      <Text color={theme.dim}>SYNCHRONIZATION / 同期</Text>
+      <Text color={theme.dim}>PLAN PROGRESS / 作戦進捗</Text>
       <Text color={plan.color} bold>
         [{plan.gauge}] {plan.label}
       </Text>

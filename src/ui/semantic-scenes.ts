@@ -40,6 +40,49 @@ export interface StationFrameOptions {
   selectedIndex: number;
 }
 
+export interface SynchronizationFrameOptions {
+  columns: number;
+  rows: number;
+  phase: number;
+  percent: number;
+  status: string;
+  detail: string;
+}
+
+export function buildSynchronizationFrame(
+  options: SynchronizationFrameOptions,
+): TuiFrame {
+  const frame = new TuiFrame(options.columns, options.rows, {
+    background: theme.black,
+  });
+  const label = truncateTuiText(
+    `HUMAN↔CODEX // ${options.status} // ${options.detail}`,
+    frame.width,
+  );
+  frame.text(0, 0, label, {
+    color: options.status === "LINK DECAY" ? theme.red : theme.dim,
+    bold: options.status === "LINK DECAY",
+  });
+  if (frame.height > 1) {
+    const baselineY = 1 + Math.floor((frame.height - 2) / 2);
+    frame.hLine(0, baselineY, frame.width, "·", {
+      color: theme.dim,
+      dim: true,
+    });
+    drawBrailleWaveform(
+      frame,
+      0,
+      1,
+      frame.width,
+      frame.height - 1,
+      options.phase,
+      theme.cyan,
+      options.percent,
+    );
+  }
+  return frame;
+}
+
 function pulseTone(phase: number): string {
   return phase % 8 < 4 ? theme.red : theme.amber;
 }
@@ -72,6 +115,7 @@ function drawEarthquakeSummary(
     0,
     Math.min(100, options.synchronizationPercent ?? 0),
   );
+  const displayedSynchronization = Math.round(synchronizationPercent);
   if (frame.height >= 27 && y + 8 <= frame.height - 2) {
     const width = Math.min(70, frame.width - 24);
     const x = Math.floor((frame.width - width) / 2);
@@ -102,7 +146,7 @@ function drawEarthquakeSummary(
       inner.width,
     );
     const scopeLabel =
-      `SYNC ${synchronizationPercent.toString().padStart(3, "0")}%`;
+      `SYNC ${displayedSynchronization.toString().padStart(3, "0")}%`;
     frame.text(inner.x, inner.y + 1, scopeLabel, {
       color: theme.dim,
       bold: true,
@@ -128,7 +172,7 @@ function drawEarthquakeSummary(
     );
     if (y + 1 < frame.height - 2) {
       const scopeLabel =
-        `SYNC ${synchronizationPercent.toString().padStart(3, "0")}%`;
+        `SYNC ${displayedSynchronization.toString().padStart(3, "0")}%`;
       frame.text(2, y + 1, scopeLabel, { color: theme.dim, bold: true });
       drawBrailleWaveform(
         frame,

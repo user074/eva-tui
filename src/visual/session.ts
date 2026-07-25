@@ -12,8 +12,8 @@ import { appReducer } from "../state/reducer.js";
 import {
   buildStations,
   impactNodes,
+  planProgress,
   SCENES,
-  synchronization,
   type Scene,
   type Simulation,
 } from "../ui/operations-model.js";
@@ -38,7 +38,7 @@ export interface VisualSnapshot {
   failureVisible: boolean;
   stations: ReturnType<typeof buildStations>;
   impact: ReturnType<typeof impactNodes>;
-  synchronization: ReturnType<typeof synchronization>;
+  synchronization: ReturnType<typeof planProgress>;
   workspace: string;
 }
 
@@ -88,7 +88,12 @@ export class VisualSession extends EventEmitter {
         ...(this.options.codexBin ? { codexBin: this.options.codexBin } : {}),
       });
       if (!this.disposed) {
-        this.dispatch({ type: "connected", threadId, model });
+        this.dispatch({
+          type: "connected",
+          threadId,
+          model,
+          at: Date.now(),
+        });
         if (this.options.audioOn) {
           this.audio.setEnabled(true);
         }
@@ -116,7 +121,7 @@ export class VisualSession extends EventEmitter {
       failureVisible: this.state.turn === "failed" && !this.failureDismissed,
       stations: buildStations(this.state, audioStatus),
       impact: impactNodes(this.state),
-      synchronization: synchronization(this.state),
+      synchronization: planProgress(this.state),
       workspace: this.options.cwd,
     };
   }
@@ -176,7 +181,7 @@ export class VisualSession extends EventEmitter {
       if (notification.method === "turn/started") {
         this.failureDismissed = false;
       }
-      this.dispatch({ type: "notification", notification });
+      this.dispatch({ type: "notification", notification, at: Date.now() });
     });
     this.client.on("request", (request: ServerRequest) => {
       if (SUPPORTED_APPROVALS.includes(request.method)) {
@@ -268,11 +273,13 @@ export class VisualSession extends EventEmitter {
       return;
     }
 
+    const sentAt = Date.now();
     this.messageCounter += 1;
     this.dispatch({
       type: "operator-message",
-      id: `operator-${Date.now()}-${this.messageCounter}`,
+      id: `operator-${sentAt}-${this.messageCounter}`,
       text,
+      at: sentAt,
     });
     try {
       await this.client.startTurn(text);

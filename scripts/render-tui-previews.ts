@@ -7,6 +7,7 @@ import type { Station } from "../src/ui/operations-model.js";
 import {
   buildEarthquakeFrame,
   buildStationFrame,
+  buildSynchronizationFrame,
   buildTsunamiFrame,
 } from "../src/ui/semantic-scenes.js";
 import type { TuiFrame } from "../src/ui/tui-frame.js";
@@ -89,6 +90,27 @@ async function writePreview(name: string, frame: TuiFrame): Promise<void> {
 }
 
 await mkdir(outputDirectory, { recursive: true });
+for (const percent of [18, 55, 90] as const) {
+  await writePreview(
+    `conversation-sync-${percent.toString().padStart(3, "0")}-96x6`,
+    buildSynchronizationFrame({
+      columns: 96,
+      rows: 6,
+      phase: 4,
+      percent,
+      status:
+        percent >= 85
+          ? "CODEX ACTIVE"
+          : percent >= 25
+            ? "AWAITING HUMAN"
+            : "LINK DECAY",
+      detail:
+        percent >= 85
+          ? "LAST RESPONSE 2.1S // 4 EXCHANGES"
+          : "HUMAN WAIT 18.0S // 2 EXCHANGES",
+    }),
+  );
+}
 await writePreview(
   "earthquake-100x29",
   buildEarthquakeFrame({

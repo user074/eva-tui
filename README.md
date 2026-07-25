@@ -65,6 +65,10 @@ loopback API.
   agents, and audio as a rib-cage Station Matrix derived from recorded state.
 - Retains affected filenames from Codex diff events and visualizes them as a
   change-propagation field.
+- Reserves a large Operations scope for live human↔Codex synchronization.
+  Fast consecutive human replies raise the ratio; once Codex has yielded,
+  unanswered time decays it. The scope continuously converges or separates
+  three parameter-distinct sine channels to express that link.
 - Shows actual plan completion, context use, diff statistics, MCP readiness,
   and command/tool/file activity.
 - Renders approvals and failed turns as full-screen `警告` incident consoles.
@@ -198,7 +202,24 @@ scope: `0` shows three distinct continuous sine curves, while `100` converges
 their different starting amplitudes, frequencies, phases, and centerlines into
 one locked waveform. Plain `/eq` automatically sweeps from `0` to
 `100` over ten seconds and then remains locked. A real failure display follows
-actual plan completion.
+the live human↔Codex synchronization ratio.
+
+The live Operations ratio uses local conversation timing only:
+
+- Establishing the Codex link starts at 18% and begins the initial
+  human-response clock.
+- Codex `turn/completed` starts the human-response clock.
+- The next submitted instruction records the response latency.
+- Every submitted instruction adds 0.5 points per word, capped at +10 points
+  for 20 words. Longer instructions cannot exceed that per-input cap.
+- Waiting has a 30-second grace period, then decays continuously at one point
+  per ten seconds until the human responds.
+- Entering the first character pauses decay while the human is composing; the
+  length-based increase is applied only when the instruction is submitted.
+- Time spent while Codex is running never reduces synchronization.
+- Target changes are eased into the displayed ratio and waveform rather than
+  appearing as instantaneous jumps; even a maximum input takes several seconds
+  to become fully visible.
 
 ## Terminal graphics
 

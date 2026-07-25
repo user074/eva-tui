@@ -14,6 +14,10 @@ import {
   type PendingApproval,
   type TranscriptEntry,
 } from "./model.js";
+import {
+  recordCodexYield,
+  recordOperatorMessage,
+} from "./conversation-synchronization.js";
 
 function cap<T>(items: T[], count: number): T[] {
   return items.length > count ? items.slice(-count) : items;
@@ -168,6 +172,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         model: action.model,
         notice: "SYSTEM LINK ESTABLISHED",
         diagnostic: "",
+        conversationSynchronization: recordCodexYield(
+          state.conversationSynchronization,
+          action.at,
+        ),
         transcript: upsertTranscript(state.transcript, {
           id: "startup",
           role: "system",
@@ -192,6 +200,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "operator-message":
       return {
         ...state,
+        conversationSynchronization: recordOperatorMessage(
+          state.conversationSynchronization,
+          action.at,
+          action.text,
+        ),
         transcript: upsertTranscript(state.transcript, {
           id: action.id,
           role: "operator",
@@ -221,7 +234,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             : "AUTHORIZATION DENIED",
       };
     case "notification":
-      return reduceNotification(state, action.notification.method, action.notification.params);
+      return reduceNotification(
+        state,
+        action.notification.method,
+        action.notification.params,
+        action.at,
+      );
   }
 }
 
@@ -229,6 +247,7 @@ function reduceNotification(
   state: AppState,
   method: string,
   params: JsonObject,
+  at: number,
 ): AppState {
   if (method === "turn/started") {
     const turn = asObject(params.turn);
@@ -329,6 +348,10 @@ function reduceNotification(
       turn: "failed",
       notice: "SYSTEM ERROR",
       diagnostic: asString(error.message, stringifyCompact(params)),
+      conversationSynchronization: recordCodexYield(
+        state.conversationSynchronization,
+        at,
+      ),
     };
   }
 
@@ -350,6 +373,10 @@ function reduceNotification(
       turnId: "",
       notice: failed ? "OPERATION FAILED" : interrupted ? "OPERATION INTERRUPTED" : "OPERATION COMPLETE",
       transcript: state.transcript.map((entry) => ({ ...entry, streaming: false })),
+      conversationSynchronization: recordCodexYield(
+        state.conversationSynchronization,
+        at,
+      ),
     };
   }
 

@@ -1,22 +1,25 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Box, Text } from "ink";
 
 import type { GraphicsBackend } from "../graphics/kitty.js";
+import { easeDisplayedSynchronization } from "../state/conversation-synchronization.js";
 import type { AppState, PendingApproval, PlanStep } from "../state/model.js";
 import { Panel, Transcript } from "./components.js";
 import {
   activityTrace,
   approvalSeverity,
   buildStations,
+  conversationSynchronization,
   impactNodes,
   SCENES,
   shortLabel,
-  synchronization,
   type Scene,
 } from "./operations-model.js";
 import { SemanticGraphicView } from "./semantic-graphic-view.js";
+import { buildSynchronizationFrame } from "./semantic-scenes.js";
 import { TerminalGraphicView } from "./terminal-graphic-view.js";
 import { statusColor, theme } from "./theme.js";
+import { TuiFrameView } from "./tui-frame-view.js";
 
 function rail(phase: number, width: number, danger = false): string {
   const a = danger ? "▓" : "╱";
@@ -26,10 +29,119 @@ function rail(phase: number, width: number, danger = false): string {
   ).join("");
 }
 
-function gauge(percent: number | null, width: number): string {
-  if (percent === null) return "░".repeat(width);
-  const cells = Math.round((Math.max(0, Math.min(100, percent)) / 100) * width);
-  return `${"█".repeat(cells)}${"░".repeat(width - cells)}`;
+function synchronizationTone(percent: number): string {
+  if (percent >= 85) return theme.green;
+  if (percent >= 55) return theme.cyan;
+  if (percent >= 25) return theme.purple;
+  return theme.red;
+}
+
+function durationLabel(milliseconds: number): string {
+  if (milliseconds < 10_000) {
+    return `${(milliseconds / 1_000).toFixed(1)}S`;
+  }
+  if (milliseconds < 60_000) {
+    return `${Math.round(milliseconds / 1_000)}S`;
+  }
+  return `${Math.floor(milliseconds / 60_000)}M ${Math.round(
+    (milliseconds % 60_000) / 1_000,
+  )}S`;
+}
+
+function ConversationSynchronizationPanel({
+  state,
+  columns,
+  rows,
+  humanComposing,
+}: {
+  state: AppState;
+  columns: number;
+  rows: number;
+  humanComposing: boolean;
+}): ReactNode {
+  const [clock, setClock] = useState(() => {
+    const now = Date.now();
+    return {
+      now,
+      phase: 0,
+      displayedPercent: conversationSynchronization(state, now).percent,
+    };
+  });
+  const [composingSince, setComposingSince] = useState<number | null>(null);
+
+  useEffect(() => {
+    setComposingSince((current) =>
+      humanComposing ? current ?? Date.now() : null,
+    );
+  }, [humanComposing]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const target = conversationSynchronization(
+        state,
+        composingSince ?? now,
+      ).percent;
+      setClock((current) => ({
+        now,
+        phase: current.phase + 0.25,
+        displayedPercent: easeDisplayedSynchronization(
+          current.displayedPercent,
+          target,
+        ),
+      }));
+    }, 100);
+    timer.unref();
+    return () => clearInterval(timer);
+  }, [composingSince, state.conversationSynchronization]);
+
+  const synchronization = conversationSynchronization(
+    state,
+    composingSince ?? clock.now,
+  );
+  const tone = synchronizationTone(clock.displayedPercent);
+  const responseDetail =
+    synchronization.waitingMs > 0
+      ? `HUMAN WAIT ${durationLabel(synchronization.waitingMs)}`
+      : synchronization.lastResponseMs === null
+        ? "RESPONSE --"
+        : `LAST RESPONSE ${durationLabel(synchronization.lastResponseMs)}`;
+  const inputDetail =
+    synchronization.lastInputWords === 0
+      ? "INPUT --"
+      : `INPUT ${synchronization.lastInputWords}W +${synchronization.lastInputIncrease.toFixed(1)}`;
+  const scopeRows = rows >= 34 ? 6 : rows < 28 ? 3 : 5;
+  const frame = buildSynchronizationFrame({
+    columns: Math.max(24, columns - 4),
+    rows: scopeRows,
+    phase: clock.phase,
+    percent: clock.displayedPercent,
+    status: humanComposing ? "HUMAN COMPOSING" : synchronization.status,
+    detail: `${humanComposing ? "HUMAN COMPOSING" : responseDetail} // ${inputDetail} // ${synchronization.exchanges} EXCHANGES`,
+  });
+
+  return (
+    <Box
+      borderStyle="single"
+      borderColor={tone}
+      flexDirection="column"
+      flexShrink={0}
+    >
+      <Box
+        backgroundColor={tone}
+        paddingX={1}
+        justifyContent="space-between"
+      >
+        <Text color={theme.black} bold>
+          同期率 / HUMAN↔CODEX SYNCHRONIZATION
+        </Text>
+        <Text color={theme.black} bold>
+          {clock.displayedPercent.toFixed(1).padStart(5, "0")}%
+        </Text>
+      </Box>
+      <TuiFrameView frame={frame} align="flex-start" />
+    </Box>
+  );
 }
 
 function stateGlyph(status: string): string {
@@ -181,12 +293,13 @@ export function OperationsScreen({
   state,
   columns,
   rows,
+  humanComposing = false,
 }: {
   state: AppState;
   columns: number;
   rows: number;
+  humanComposing?: boolean;
 }): ReactNode {
-  const sync = synchronization(state);
   const wide = columns >= 96;
   const compact = rows < 28;
   const traceWidth = Math.max(18, Math.min(52, columns - 42));
@@ -194,29 +307,12 @@ export function OperationsScreen({
 
   return (
     <Box flexDirection="column" flexGrow={1}>
-      <Box
-        borderStyle="single"
-        borderColor={sync.percent === 100 ? theme.green : theme.purple}
-        flexDirection="column"
-        flexShrink={0}
-      >
-        <Box
-          backgroundColor={sync.percent === 100 ? theme.green : theme.purple}
-          paddingX={1}
-          justifyContent="space-between"
-        >
-          <Text color={theme.black} bold>同期率 / SYNCHRONIZATION</Text>
-          <Text color={theme.black} bold>
-            {sync.percent === null ? "NO PLAN" : `${sync.percent.toString().padStart(3, "0")}%`}
-          </Text>
-        </Box>
-        <Box paddingX={1}>
-          <Text color={sync.percent === 100 ? theme.green : theme.purple}>
-            [{gauge(sync.percent, Math.max(12, Math.min(42, columns - 30)))}]{" "}
-            {sync.total === 0 ? "STANDBY" : `${sync.completed}/${sync.total} STAGES`}
-          </Text>
-        </Box>
-      </Box>
+      <ConversationSynchronizationPanel
+        state={state}
+        columns={columns}
+        rows={rows}
+        humanComposing={humanComposing}
+      />
 
       <Box flexDirection={wide ? "row" : "column"} flexGrow={1}>
         <Panel
@@ -226,7 +322,7 @@ export function OperationsScreen({
         >
           <PlanSpine
             plan={state.plan}
-            maxItems={compact ? 3 : Math.max(3, Math.min(7, rows - 19))}
+            maxItems={compact ? 3 : Math.max(3, Math.min(7, rows - 23))}
           />
         </Panel>
 

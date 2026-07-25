@@ -21,6 +21,7 @@ import {
 import {
   buildEarthquakeFrame,
   buildStationFrame,
+  buildSynchronizationFrame,
   buildTsunamiFrame,
 } from "../src/ui/semantic-scenes.js";
 import { earthquakeSynchronizationAtPhase } from "../src/ui/semantic-graphic-view.js";
@@ -229,6 +230,25 @@ test("waveform synchronization converges distinct colored sine traces", () => {
 
   assert.ok(dotCount(separated) > dotCount(aligned) * 1.8);
   assert.ok(separatedColors.size >= 3);
+});
+
+test("conversation synchronization frame reserves a readable waveform field", () => {
+  const frame = buildSynchronizationFrame({
+    columns: 72,
+    rows: 6,
+    phase: 3,
+    percent: 42,
+    status: "LINK DECAY",
+    detail: "HUMAN WAIT 19.0S // 2 EXCHANGES",
+  });
+  const output = tuiFrameToText(frame);
+  const brailleRows = frame
+    .rows()
+    .filter((row) => row.some((cell) => /[\u2800-\u28ff]/u.test(cell.char)));
+
+  assert.match(output, /HUMAN↔CODEX/);
+  assert.match(output, /LINK DECAY/);
+  assert.ok(brailleRows.length >= 3);
 });
 
 test("earthquake simulation synchronization sweeps from zero to lock in ten seconds", () => {

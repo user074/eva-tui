@@ -50,6 +50,16 @@ export interface McpState {
   status: string;
 }
 
+export interface ConversationSynchronizationState {
+  percent: number;
+  updatedAt: number | null;
+  awaitingHumanSince: number | null;
+  lastResponseMs: number | null;
+  exchanges: number;
+  lastInputWords: number;
+  lastInputIncrease: number;
+}
+
 export interface PendingApproval {
   id: RequestId;
   method: string;
@@ -71,17 +81,18 @@ export interface AppState {
   tokens: TokenState;
   diff: DiffState;
   mcp: McpState[];
+  conversationSynchronization: ConversationSynchronizationState;
   approval: PendingApproval | null;
   notice: string;
   diagnostic: string;
 }
 
 export type AppAction =
-  | { type: "connected"; threadId: string; model: string }
+  | { type: "connected"; threadId: string; model: string; at: number }
   | { type: "connection-failed"; message: string }
   | { type: "disconnected"; message: string }
-  | { type: "operator-message"; id: string; text: string }
-  | { type: "notification"; notification: CodexNotification }
+  | { type: "operator-message"; id: string; text: string; at: number }
+  | { type: "notification"; notification: CodexNotification; at: number }
   | { type: "server-request"; request: ServerRequest }
   | { type: "approval-resolved"; decision: ApprovalDecision }
   | { type: "diagnostic"; message: string }
@@ -115,6 +126,15 @@ export const initialState: AppState = {
     files: [],
   },
   mcp: [],
+  conversationSynchronization: {
+    percent: 18,
+    updatedAt: null,
+    awaitingHumanSince: null,
+    lastResponseMs: null,
+    exchanges: 0,
+    lastInputWords: 0,
+    lastInputIncrease: 0,
+  },
   approval: null,
   notice: "INITIALIZING",
   diagnostic: "",

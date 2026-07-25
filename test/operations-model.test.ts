@@ -8,7 +8,7 @@ import {
   buildStations,
   cycleScene,
   impactNodes,
-  synchronization,
+  planProgress,
 } from "../src/ui/operations-model.js";
 
 test("scene navigation cycles in both directions", () => {
@@ -17,7 +17,7 @@ test("scene navigation cycles in both directions", () => {
   assert.equal(cycleScene("transcript"), "operations");
 });
 
-test("synchronization is derived only from plan status", () => {
+test("plan progress is derived only from plan status", () => {
   const state = {
     ...initialState,
     plan: [
@@ -28,7 +28,7 @@ test("synchronization is derived only from plan status", () => {
     ],
   };
 
-  assert.deepEqual(synchronization(state), {
+  assert.deepEqual(planProgress(state), {
     completed: 2,
     total: 4,
     percent: 50,

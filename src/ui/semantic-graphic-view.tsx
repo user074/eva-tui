@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { GraphicScene } from "../graphics/compositions.js";
 import type { AppState } from "../state/model.js";
 import {
-  synchronization,
+  conversationSynchronization,
   type Station,
 } from "./operations-model.js";
 import {
@@ -54,7 +54,9 @@ export function SemanticGraphicView({
 }): ReactNode {
   const [motionPhase, setMotionPhase] = useState(0);
   const measuredSynchronization =
-    state === undefined ? null : synchronization(state).percent;
+    state === undefined
+      ? null
+      : conversationSynchronization(state, Date.now()).percent;
   const simulatedSynchronization =
     scene === "earthquake" &&
     simulation &&

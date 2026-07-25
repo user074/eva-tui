@@ -136,7 +136,7 @@ export function App(props: AppProps) {
 
   useEffect(() => {
     const onNotification = (notification: CodexNotification): void => {
-      dispatch({ type: "notification", notification });
+      dispatch({ type: "notification", notification, at: Date.now() });
     };
     const onRequest = (request: ServerRequest): void => {
       const supported = [
@@ -178,7 +178,7 @@ export function App(props: AppProps) {
       })
       .then(({ threadId, model }) => {
         if (!cancelled) {
-          dispatch({ type: "connected", threadId, model });
+          dispatch({ type: "connected", threadId, model, at: Date.now() });
         }
       })
       .catch((error: unknown) => {
@@ -303,11 +303,13 @@ export function App(props: AppProps) {
         return;
       }
 
+      const sentAt = Date.now();
       messageCounter.current += 1;
       dispatch({
         type: "operator-message",
-        id: `operator-${Date.now()}-${messageCounter.current}`,
+        id: `operator-${sentAt}-${messageCounter.current}`,
         text,
+        at: sentAt,
       });
       setComposer("");
       void client.startTurn(text).catch((error: unknown) => {
@@ -456,7 +458,12 @@ export function App(props: AppProps) {
       <SceneTabs scene={scene} />
 
       {scene === "operations" ? (
-        <OperationsScreen state={state} columns={size.columns} rows={size.rows} />
+        <OperationsScreen
+          state={state}
+          columns={size.columns}
+          rows={size.rows}
+          humanComposing={composer.length > 0}
+        />
       ) : null}
       {scene === "stations" ? (
         <StationsScreen

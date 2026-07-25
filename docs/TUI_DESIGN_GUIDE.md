@@ -163,11 +163,13 @@ Animation is discrete and stateful:
 - hazard stripes shift by one terminal cell;
 - danger color pulses between red and amber;
 - propagation channels extend and reset;
-- the earthquake synchronization scope advances its carrier and pulse while
+- the earthquake synchronization scope advances its carrier while
   its 0–100 value converges three curves with distinct starting amplitude,
   frequency, phase, and centerline into one locked curve;
 - a simulated earthquake without a fixed override sweeps from 0 to 100 over
   ten seconds and then holds the locked curve;
+- the Operations synchronization scope uses a scene-local low-frequency clock
+  to animate the carrier and show unanswered-human decay;
 - the selected station marker blinks;
 - scene elements may reveal in ordered stages.
 
@@ -182,10 +184,11 @@ signals. That phase is owned by the scene leaf rather than the whole
 application, and Ink's incremental renderer discards unchanged lines.
 Terminal-driven SGR blink remains available for selected markers.
 
-Do not leave the full application on a 30–60 FPS JavaScript timer. Persistent
-motion should stay below a few frames per second, be scoped to the active
-scene, and change only a small number of rows. Idle Operations, Impact, and
-Transcript displays have no application animation timer.
+Do not leave the full application on a 30–60 FPS JavaScript timer. Structural
+motion should stay below a few frames per second. The small Operations
+synchronization leaf may interpolate at 10 FPS so its ratio and curves move
+smoothly without rerendering the surrounding application; Impact and
+Transcript have no application animation timer.
 
 ## Functional binding
 
@@ -196,7 +199,18 @@ Visual modules must bind to Codex data:
 - station event codes use recorded event counts;
 - earthquake dossiers use the actual diagnostic or failed activity label;
 - tsunami dossiers use real changed-file and line counts when available;
-- synchronization rails and scope convergence use actual plan completion;
+- synchronization rails and scope convergence use completed human-response
+  timing and input length: each instruction contributes 0.5 points per word,
+  capped at 10 points for 20 words, a 30-second grace follows each Codex yield,
+  then unanswered time decays continuously at one point per ten seconds;
+- visible composer activity pauses unanswered-human decay, while the
+  length-based increase remains deferred until submission;
+- initial link establishment starts at 18 percent and is treated as the first
+  Codex yield, so an untouched session also decays after the grace period;
+- the measured ratio is a target; the Operations scope eases its displayed
+  ratio and trace geometry toward that target at no more than 1.5 points per
+  second to avoid event-driven jumps;
+- plan completion remains separate operation-spine telemetry;
 - plain `/eq` performs the ten-second simulated synchronization sweep, while
   `/eq 0` through `/eq 100` hold an explicitly fixed test value;
 - approval alerts show the proposed operation and derived risk.
@@ -260,8 +274,8 @@ matrix, and both compact `78×21` scenes. Check:
 3. the dominant event is readable before supporting data;
 4. state remains understandable without color;
 5. compact mode preserves action and severity;
-6. Braille appears only in the small earthquake synchronization scope; no
-   large chassis or warning field is rasterized as Braille or quadrant texture.
+6. Braille appears only in synchronization scopes; no chassis or warning field
+   is rasterized as Braille or quadrant texture.
 
 Then run:
 
