@@ -8,9 +8,13 @@ import {
 } from "../src/ui/asset-cell-masks.js";
 import {
   denseDiagonalStripe,
+  drawDossier,
+  drawFilledDiamond,
   drawFilledRectPanel,
   drawHorizontalTriangle,
   drawRectStatusBlock,
+  drawSquareWarningTile,
+  drawWarningField,
   drawVerticalTriangle,
 } from "../src/ui/tui-primitives.js";
 import {
@@ -105,6 +109,50 @@ test("dense diagonal motifs remain one terminal cell per glyph", () => {
   assert.equal(tuiTextWidth(denseDiagonalStripe(13, 2)), 13);
 });
 
+test("dossiers use matching warning bands and simple vertical side pairs", () => {
+  const frame = new TuiFrame(24, 10, { background: "#090807" });
+  drawDossier(frame, {
+    x: 1,
+    y: 1,
+    width: 22,
+    height: 8,
+    title: "ALERT",
+    border: "#ff3b21",
+    phase: 0,
+  });
+
+  assert.equal(
+    frame
+      .rows()[2]
+      ?.slice(2, 22)
+      .map((cell) => cell.char)
+      .join(""),
+    "◢◤".repeat(10),
+  );
+  assert.equal(
+    frame
+      .rows()[7]
+      ?.slice(2, 22)
+      .map((cell) => cell.char)
+      .join(""),
+    "◢◤".repeat(10),
+  );
+  for (let y = 3; y < 7; y += 1) {
+    assert.equal(
+      [frame.cell(2, y)?.char, frame.cell(3, y)?.char].join(""),
+      "◢◤",
+    );
+    assert.equal(
+      [frame.cell(20, y)?.char, frame.cell(21, y)?.char].join(""),
+      "◢◤",
+    );
+    for (const x of [2, 3, 20, 21]) {
+      assert.equal(frame.cell(x, y)?.color, "#ff3b21");
+      assert.equal(frame.cell(x, y)?.background, "#090807");
+    }
+  }
+});
+
 test("filled triangle primitives compose across multiple terminal rows", () => {
   const frame = new TuiFrame(24, 7);
   drawVerticalTriangle(frame, 6, 0, 2, "up", "#ff3b21");
@@ -171,6 +219,99 @@ test("rectangular panels use gapless background fills and solid index tabs", () 
   assert.ok(!cells.some((cell) => "◢◣◤◥".includes(cell.char)));
 });
 
+test("filled diamonds use symmetric background scanlines without edge glyphs", () => {
+  const frame = new TuiFrame(17, 7, { background: "#090807" });
+  drawFilledDiamond(frame, 2, 0, 13, 7, "#ff3b21", "WARNING");
+  const redCellsPerRow = frame.rows().map(
+    (row) => row.filter((cell) => cell.background === "#ff3b21").length,
+  );
+
+  assert.deepEqual(redCellsPerRow, [1, 5, 9, 13, 9, 5, 1]);
+  assert.ok(
+    !frame
+      .rows()
+      .flatMap((row) => row)
+      .some((cell) => "◢◣◤◥▇".includes(cell.char)),
+  );
+  assert.match(tuiFrameToText(frame), /WARNING/);
+});
+
+test("filled diamonds can add sparse triangle tips without changing their core fill", () => {
+  const frame = new TuiFrame(14, 5, { background: "#090807" });
+  drawFilledDiamond(
+    frame,
+    2,
+    0,
+    10,
+    5,
+    "#ff3b21",
+    "WARNING",
+    true,
+  );
+  const output = tuiFrameToText(frame);
+  const redCellsPerRow = frame.rows().map(
+    (row) => row.filter((cell) => cell.background === "#ff3b21").length,
+  );
+
+  assert.deepEqual(redCellsPerRow, [0, 6, 10, 6, 0]);
+  assert.match(output, /◢◣/);
+  assert.match(output, /◥◤/);
+  assert.match(output, /WARNING/);
+});
+
+test("square warning tiles use closed corners and one triangle per marker row", () => {
+  const frame = new TuiFrame(9, 5, { background: "#090807" });
+  drawSquareWarningTile(frame, 0, 0, 9, 5, "#ff3b21");
+  const output = tuiFrameToText(frame);
+  const cells = frame.rows().flatMap((row) => row);
+
+  assert.ok(cells.every((cell) => cell.background === "#ff3b21"));
+  assert.match(output, /┏━━━━━━━┓/);
+  assert.match(output, /┗━━━━━━━┛/);
+  assert.doesNotMatch(output, /╋/);
+  assert.equal(Array.from(output).filter((character) => character === "▲").length, 1);
+  assert.match(output, /WARNING/);
+  assert.equal(Array.from(output).filter((character) => character === "▼").length, 1);
+});
+
+test("warning field balances three-column side gutters with two-row vertical gutters", () => {
+  const frame = new TuiFrame(24, 12, { background: "#090807" });
+  drawWarningField(frame, 0);
+
+  for (let x = 9; x < 12; x += 1) {
+    assert.equal(frame.cell(x, 2)?.background, "#090807");
+  }
+  for (let y = 5; y < 7; y += 1) {
+    assert.equal(frame.cell(4, y)?.background, "#090807");
+  }
+  assert.equal(frame.cell(12, 0)?.background, "#b51224");
+  assert.equal(frame.cell(0, 7)?.background, "#b51224");
+});
+
+test("warning field fades complete tile columns from left to right on entrance", () => {
+  const hidden = new TuiFrame(48, 12, { background: "#090807" });
+  drawWarningField(hidden, 0, "#b51224", 0);
+  assert.doesNotMatch(tuiFrameToText(hidden), /WARNING/);
+  assert.ok(
+    hidden
+      .rows()
+      .flatMap((row) => row)
+      .every((cell) => cell.background === "#090807"),
+  );
+
+  const sweeping = new TuiFrame(48, 12, { background: "#090807" });
+  drawWarningField(sweeping, 0, "#b51224", 3);
+  assert.notEqual(sweeping.cell(0, 0)?.background, "#090807");
+  assert.notEqual(sweeping.cell(12, 0)?.background, "#090807");
+  assert.equal(sweeping.cell(24, 0)?.background, "#090807");
+  assert.equal(sweeping.cell(36, 0)?.background, "#090807");
+
+  const revealed = new TuiFrame(48, 12, { background: "#090807" });
+  drawWarningField(revealed, 0, "#b51224", 11);
+  assert.equal(revealed.cell(36, 0)?.background, "#b51224");
+  assert.match(tuiFrameToText(revealed), /WARNING/);
+});
+
 test("reference SVG geometry maps to cell-native caps and filled spans", () => {
   const frame = new TuiFrame(38, 9, { background: "#090807" });
   drawAssetDataHex(frame, 1, 1, 24, 7, "#ff3b21");
@@ -235,7 +376,7 @@ test("tsunami composition is a warning field with six placards and a dossier", (
   const frame = buildTsunamiFrame({
     columns: 100,
     rows: 29,
-    phase: 4,
+    phase: 24,
   });
   const output = tuiFrameToText(frame);
 
@@ -254,13 +395,12 @@ test("tsunami composition is a warning field with six placards and a dossier", (
     .flatMap((row) => row)
     .filter(
       (cell) =>
-        (cell.char === "▇" || "◢◣◥◤◀▶".includes(cell.char)) &&
-        (cell.color === "#ff3b21" ||
-          cell.color === "#b51224"),
+        cell.background === "#ff3b21" ||
+        cell.background === "#b51224",
     );
   assert.ok(
     hazardCells.length > 700,
-    "tsunami warning field should be predominantly glyph-filled",
+    "tsunami warning field should be predominantly background-filled",
   );
 });
 

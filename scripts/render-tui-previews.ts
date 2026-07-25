@@ -105,9 +105,20 @@ await writePreview(
   buildTsunamiFrame({
     columns: 100,
     rows: 29,
-    phase: 4,
+    phase: 24,
   }),
 );
+for (const phase of [0, 3, 6, 9] as const) {
+  await writePreview(
+    `tsunami-entrance-${phase.toString().padStart(2, "0")}-100x29`,
+    buildTsunamiFrame({
+      columns: 100,
+      rows: 29,
+      phase,
+      motionPhase: 4,
+    }),
+  );
+}
 await writePreview(
   "stations-94x20",
   buildStationFrame({
@@ -133,6 +144,6 @@ await writePreview(
   buildTsunamiFrame({
     columns: 78,
     rows: 21,
-    phase: 4,
+    phase: 24,
   }),
 );

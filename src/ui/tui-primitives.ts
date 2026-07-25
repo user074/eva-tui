@@ -33,6 +33,29 @@ function repeatToWidth(pattern: string, width: number, offset = 0): string {
   ).join("");
 }
 
+function blendHexColor(from: string, to: string, progress: number): string {
+  const clamped = Math.max(0, Math.min(1, progress));
+  if (clamped === 0) return from;
+  if (clamped === 1) return to;
+  const parse = (color: string): [number, number, number] => {
+    const value = color.slice(1);
+    return [
+      Number.parseInt(value.slice(0, 2), 16),
+      Number.parseInt(value.slice(2, 4), 16),
+      Number.parseInt(value.slice(4, 6), 16),
+    ];
+  };
+  const start = parse(from);
+  const end = parse(to);
+  return `#${start
+    .map((channel, index) =>
+      Math.round(channel + ((end[index] ?? channel) - channel) * clamped)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
 export function denseDiagonalStripe(
   width: number,
   offset = 0,
@@ -405,32 +428,19 @@ export function drawDossier(
   frame.text(
     x + 1,
     y + height - 2,
-    denseDiagonalStripe(width - 2, phase % 2, true),
+    denseDiagonalStripe(width - 2, phase % 2),
     { color: border, background: theme.black, bold: true, blink: true },
   );
   for (let row = y + 2; row < y + height - 2; row += 1) {
-    frame.text(
-      x + 1,
-      row,
-      denseDiagonalStripe(2, row % 2),
-      {
-        color: border,
-        background: theme.black,
-        bold: true,
-        blink: true,
-      },
-    );
-    frame.text(
-      x + width - 3,
-      row,
-      denseDiagonalStripe(2, row % 2, true),
-      {
-        color: border,
-        background: theme.black,
-        bold: true,
-        blink: true,
-      },
-    );
+    const sideBand = "◢◤";
+    const sideBandStyle = {
+      color: border,
+      background: theme.black,
+      bold: true,
+      blink: true,
+    } as const;
+    frame.text(x + 1, row, sideBand, sideBandStyle);
+    frame.text(x + width - 3, row, sideBand, sideBandStyle);
   }
   if (options.title) {
     const label = ` ${truncateTuiText(options.title.toUpperCase(), width - 8)} `;
@@ -443,45 +453,179 @@ export function drawDossier(
   return { x: x + 4, y: y + 2, width: width - 8, height: height - 4 };
 }
 
+export function drawFilledDiamond(
+  frame: TuiFrame,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  tone: string,
+  label?: string,
+  triangleCaps = false,
+): void {
+  const w = Math.max(triangleCaps ? 8 : 7, Math.floor(width));
+  const h = Math.max(3, Math.floor(height) | 1);
+  const left = Math.floor(x);
+  const top = Math.floor(y);
+  const middle = Math.floor(h / 2);
+  const minimumSpan = triangleCaps ? 2 : 1;
+
+  for (let row = 0; row < h; row += 1) {
+    if (triangleCaps && (row === 0 || row === h - 1)) {
+      const tip = row === 0 ? "◢◣" : "◥◤";
+      frame.text(left + Math.floor((w - 2) / 2), top + row, tip, {
+        color: tone,
+        bold: true,
+      });
+      continue;
+    }
+
+    const distance = Math.abs(middle - row);
+    const progress = (middle - distance) / Math.max(1, middle);
+    let spanWidth =
+      minimumSpan + Math.round((w - minimumSpan) * progress);
+    if (spanWidth % 2 !== w % 2) {
+      spanWidth = Math.max(minimumSpan, spanWidth - 1);
+    }
+    const inset = Math.floor((w - spanWidth) / 2);
+    frame.fill(left + inset, top + row, spanWidth, 1, " ", {
+      color: tone,
+      background: tone,
+    });
+
+    if (triangleCaps && row !== middle) {
+      const upper = row < middle;
+      frame.put(left + inset - 1, top + row, upper ? "◢" : "◤", {
+        color: tone,
+        bold: true,
+      });
+      frame.put(
+        left + inset + spanWidth,
+        top + row,
+        upper ? "◣" : "◥",
+        {
+          color: tone,
+          bold: true,
+        },
+      );
+    }
+  }
+
+  if (label) {
+    frame.centeredText(
+      top + middle,
+      truncateTuiText(label.toUpperCase(), w - 2),
+      {
+        color: theme.black,
+        background: tone,
+        bold: true,
+      },
+      left,
+      w,
+    );
+  }
+}
+
+export function drawSquareWarningTile(
+  frame: TuiFrame,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  tone: string,
+): void {
+  const left = Math.floor(x);
+  const top = Math.floor(y);
+  const w = Math.max(9, Math.floor(width));
+  const h = Math.max(5, Math.floor(height));
+  const edgeStyle = {
+    color: theme.black,
+    background: tone,
+    bold: true,
+  } as const;
+
+  frame.fill(left, top, w, h, " ", {
+    color: tone,
+    background: tone,
+  });
+  frame.hLine(left + 1, top, w - 2, "━", edgeStyle);
+  frame.hLine(left + 1, top + h - 1, w - 2, "━", edgeStyle);
+  frame.vLine(left, top + 1, h - 2, "┃", edgeStyle);
+  frame.vLine(left + w - 1, top + 1, h - 2, "┃", edgeStyle);
+  frame.put(left, top, "┏", edgeStyle);
+  frame.put(left + w - 1, top, "┓", edgeStyle);
+  frame.put(left, top + h - 1, "┗", edgeStyle);
+  frame.put(left + w - 1, top + h - 1, "┛", edgeStyle);
+
+  const middle = top + Math.floor(h / 2);
+  frame.centeredText(
+    middle - 1,
+    "▲",
+    { color: theme.black, background: tone, bold: true },
+    left,
+    w,
+  );
+  frame.centeredText(
+    middle,
+    "WARNING",
+    { color: theme.black, background: tone, bold: true },
+    left,
+    w,
+  );
+  frame.centeredText(
+    middle + 1,
+    "▼",
+    { color: theme.black, background: tone, bold: true },
+    left,
+    w,
+  );
+}
+
 export function drawWarningField(
   frame: TuiFrame,
   phase: number,
   tone: string = theme.crimson,
+  entrancePhase = 11,
 ): void {
-  const tileWidth = 15;
+  const tileWidth = 9;
   const tileHeight = 5;
-  for (let y = -2; y < frame.height + tileHeight; y += tileHeight) {
-    const rowIndex = Math.floor((y + 2) / tileHeight);
-    const shift = rowIndex % 2 === 0 ? 0 : 7;
-    for (let x = -8 + shift; x < frame.width; x += tileWidth) {
+  const horizontalStep = tileWidth + 3;
+  const verticalStep = tileHeight + 2;
+  const revealTicks = 11;
+  const gradientColumns = 2;
+  const columnCount = Math.ceil(frame.width / horizontalStep);
+  const entranceProgress = Math.max(
+    0,
+    Math.min(1, entrancePhase / revealTicks),
+  );
+  const sweepPosition =
+    entranceProgress * (columnCount + gradientColumns);
+  for (
+    let y = 0, rowIndex = 0;
+    y < frame.height;
+    y += verticalStep, rowIndex += 1
+  ) {
+    for (
+      let x = 0, columnIndex = 0;
+      x < frame.width;
+      x += horizontalStep, columnIndex += 1
+    ) {
       const bright =
-        (Math.floor(x / tileWidth) + rowIndex + Math.floor(phase / 8)) % 4 === 0;
-      const fill = bright ? theme.red : tone;
-      frame.text(x + 3, y, `◢${"▇".repeat(7)}◣`, {
-        color: fill,
-        bold: true,
-      });
-      frame.text(x + 1, y + 1, `◢${"▇".repeat(11)}◣`, {
-        color: fill,
-        bold: true,
-      });
-      frame.text(x, y + 2, `◀${"▇".repeat(13)}▶`, {
-        color: fill,
-        bold: true,
-      });
-      frame.centeredText(y + 2, "WARNING", {
-        color: theme.black,
-        background: fill,
-        bold: true,
-      }, x, tileWidth);
-      frame.text(x + 1, y + 3, `◥${"▇".repeat(11)}◤`, {
-        color: fill,
-        bold: true,
-      });
-      frame.text(x + 3, y + 4, `◥${"▇".repeat(7)}◤`, {
-        color: fill,
-        bold: true,
-      });
+        (columnIndex +
+          rowIndex +
+          Math.floor(phase / 8)) %
+          4 ===
+        0;
+      const targetFill = bright ? theme.red : tone;
+      const rawTileProgress = Math.max(
+        0,
+        Math.min(1, (sweepPosition - columnIndex) / gradientColumns),
+      );
+      const tileProgress =
+        rawTileProgress ** 2 * (3 - 2 * rawTileProgress);
+      if (tileProgress === 0) continue;
+      const fill = blendHexColor(theme.black, targetFill, tileProgress);
+      drawSquareWarningTile(frame, x, y, tileWidth, tileHeight, fill);
     }
   }
 }

@@ -57,16 +57,20 @@ The portable scenes follow the organization of
 3. Paired amber warning blocks reinforce the central assembly.
 4. Red magnitude and depth blocks flank an amber synchronization coupler.
 5. Side `地震` placards anchor the lower cluster.
-6. A striped incident dossier gives the real failure or simulation detail.
+6. A dossier with simple `◢◤` bands across its top and bottom, plus the same
+   `◢◤` pair repeated down both sides, gives the real failure or simulation
+   detail.
 
 ### Tsunami
 
-1. A tiled `WARNING` hex field covers the screen. It is not a picture of a
-   wave.
+1. A tiled, background-filled square `WARNING` grid covers the screen. It is not a picture of a
+   wave. On entry, complete tile columns fade from black to their final warning
+   colors in a left-to-right sweep with a two-tile soft leading edge.
 2. Six `津波 / ALERT` placards occupy the left and right edge zones.
 3. A centered solid red warning plate carries `PERINGATAN DINI TSUNAMI`.
-4. A black, striped dossier carries severity, real diff counts, propagation,
-   and simulation status.
+4. A black dossier with simple `◢◤` bands across its top and bottom, plus the
+   same `◢◤` pair repeated down both sides, carries severity, real diff counts,
+   propagation, and simulation status.
 5. Linked `NODE` channels give the dossier an operational lower section.
 
 ### Station matrix
@@ -93,7 +97,7 @@ poster-sized typography inside normal operational screens.
 | Data block | solid rectangular fill, label and value | measurement or coupled state |
 | Placard | rounded black chassis, amber caps, Kanji | distributed alert node |
 | Dossier | rounded box, tight `◢◤` / `◣◥` rails on all four edges, nested rows | actionable detail |
-| Warning field | repeated filled `WARNING` hex cells | spatial threat coverage |
+| Warning field | spaced red/crimson square tiles, black edges, one black `▲`/`▼` marker | spatial threat coverage |
 | Rib | `┃`, `┫`, `┣`, `━`, two-row filled status block | system topology |
 | Signal channel | label, animated `━─` span, target | propagation or progress |
 

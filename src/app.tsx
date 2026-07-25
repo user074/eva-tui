@@ -227,11 +227,13 @@ export function App(props: AppProps) {
         return;
       }
       if (text === "/simulate earthquake" || text === "/eq") {
+        setPhase(0);
         setSimulation("earthquake");
         setComposer("");
         return;
       }
       if (text === "/simulate tsunami" || text === "/tsunami") {
+        setPhase(0);
         setSimulation("tsunami");
         setComposer("");
         return;

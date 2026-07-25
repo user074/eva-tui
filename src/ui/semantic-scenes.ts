@@ -312,7 +312,7 @@ export function buildTsunamiFrame(options: TsunamiFrameOptions): TuiFrame {
   const headerWidth = Math.max(38, frame.width - centerMargin * 2);
   const headerX = Math.floor((frame.width - headerWidth) / 2);
 
-  drawWarningField(frame, motionPhase);
+  drawWarningField(frame, motionPhase, theme.crimson, options.phase);
   drawFilledRectPanel(frame, {
     x: headerX,
     y: 1,
