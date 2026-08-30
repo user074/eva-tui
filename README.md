@@ -1,357 +1,213 @@
 # EVA
 
-EVA is an experimental pair of functional Codex clients with an anime
-command-center visual language: high-contrast warning states, kanji labels,
-synchronization rails, dense operational telemetry, and optional ambient
-audio.
+> A cinematic command center for coding with Codex.
 
-It is a separate client, not a patch to Codex. Both modes launch the installed
-`codex app-server` as a child process and speak its JSONL protocol over stdio.
-Updating Codex therefore does not overwrite EVA, and installing EVA does not
-modify Codex.
+EVA is an experimental interface for Codex that turns an ordinary coding
+session into an anime-inspired operations console. Plans become mission
+phases, tool calls become station activity, approvals become command gates,
+and workspace changes move through a live impact display.
 
-```text
-                          ┌── EVA TUI (Ink/React)
-operator ──> EVA core ───┤
-                          └── EVA Visual (loopback browser renderer)
-                                  │
-                                  └──JSONL──> codex app-server ──> Codex
-```
+Instead of putting chat at the center of the screen, EVA is designed to make
+the whole session feel visible, active, and operational.
 
-- `eva --tui` is the portable terminal interface and remains the default.
-- `eva --visual` starts a graphical console on `127.0.0.1` and opens it in the
-  default browser.
-- Both expose the same live transcript, plan, activity, diff, token, MCP,
-  approval, interrupt, simulation, and audio state.
+![EVA TUI demo](docs/Terminal-eva-tui-zsh12246-25July2026-ezgif.com-video-to-gif-converter.gif)
 
-The visual console is not a hosted web service. Its browser page is a local
-renderer connected to the EVA Node process through a token-protected
-loopback API.
+## What is EVA?
 
-## Version 0.5
+EVA is a separate client for Codex. It uses the Codex installation already on
+your computer, including its authentication, configuration, models, tools, and
+sandbox settings. It does not modify or replace Codex.
 
-- Starts a new Codex thread in the selected workspace.
-- Streams Codex responses into the thread spine.
-- Separates `eva --tui` and `eva --visual` at the rendering boundary while
-  retaining the same Codex app-server client and state model.
-- Adds a functional graphical operations console with live Operations,
-  Stations, Impact, and Transcript displays; Codex command submission;
-  interrupts; approval controls; simulations; and audio controls.
-- Uses the upstream skewed station blades, long warning shape, warning field,
-  placards, and alert components directly in the visual renderer. The station
-  view follows the upstream alternating rib-and-spine topology, while the
-  warning displays preserve the assembled earthquake and tsunami hierarchy.
-- Adds a Tier 3 Kitty-graphics backend that rasterizes high-resolution warning
-  compositions and anchors them inside the Ink layout with Unicode image
-  placeholders.
-- Grounds the earthquake, tsunami, and station screens in the actual
-  organization of `ews-concept-new`: earthquake ticker bands and a central
-  alert cluster; a tiled tsunami warning field, six placards, and an information
-  dossier; and multi-spine station ribs with state-bearing status blocks.
-- Includes selected, attributed upstream visual assets under their modified
-  MIT license rather than substituting unrelated wave or radar imagery.
-- Adds a portable semantic TUI renderer for Apple Terminal and other standard
-  terminals. Its active earthquake and station scenes use gapless
-  background-filled alert plates and rectangular status blocks alongside
-  hazard rails, placards, dossiers, linked ribs, and real text; it never
-  downsamples the Kitty image into block pixels.
-- Runs geometry as a staged reveal, then keeps only operational rails and
-  signals moving on a low-frequency scene-local clock. Incremental line
-  rendering prevents those updates from repainting unchanged output.
-- Uses an operations-first command-center screen instead of making chat the
-  primary canvas.
-- Provides Operations, Stations, Impact, and Transcript scenes.
-- Keeps a compact Station Bus on the main Operations screen, with Station
-  Matrix drill-downs for recent MCP, tool, agent, shell, Git, file, and audio
-  activity.
-- Builds the Propagation Field from ordinary Codex item events: files being
-  read, files being written, and subsystem signals. Turn diff events enrich
-  the field when available.
-- Reserves a large Operations scope for live human↔Codex synchronization.
-  Fast consecutive human replies raise the ratio; once Codex has yielded,
-  unanswered time decays it. The scope continuously converges or separates
-  three parameter-distinct sine channels to express that link.
-- Keeps the Operation Spine active on every turn. It shows Codex's formal plan
-  when one is emitted, and otherwise derives live phases from the normal turn
-  and item lifecycle.
-- Shows context use, diff statistics, MCP readiness, and
-  command/tool/file activity.
-- Renders approvals and failed turns as full-screen `警告` incident consoles.
-- Includes explicitly labeled, non-mutating earthquake and tsunami visual
-  simulations.
-- Accepts, session-accepts, declines, or cancels approval requests.
-- Interrupts the active Codex turn.
-- Adapts between wide two-column and narrow stacked layouts.
-- Plays a user-supplied music file, an original generated ambient loop, or a
-  YouTube track through an official visible companion player. Audio is
-  disabled by default.
+You can use EVA in two ways:
 
-## Requirements
+| Mode | Experience |
+| --- | --- |
+| `eva --tui` | A portable terminal interface with color, Unicode graphics, keyboard controls, and optional high-resolution terminal graphics. This is the default. |
+| `eva --visual` | A local graphical console that opens in your browser and presents the same session as a larger command-center display. |
 
-- Node.js 22 or newer.
-- A current `codex` CLI installed, authenticated, and available on `PATH`.
-- For `--tui`: a terminal with color and Unicode support.
-- For `--visual`: a modern local browser.
-- For local-file or generated audio: `afplay` on macOS, or `mpv`, `ffplay`,
-  `paplay`, or `aplay`.
-- For YouTube audio: a browser with JavaScript enabled.
-- For Tier 3 graphics: Kitty 0.28+ or another terminal with Kitty graphics
-  Unicode-placeholder support. Kitty, Ghostty, and WezTerm are detected in
-  automatic mode.
+Both modes let you talk to Codex, follow its plan and activity, inspect
+workspace impact, respond to approvals, interrupt a turn, and review the full
+transcript.
 
-## Install and run
+## The idea
+
+EVA is inspired by the command-center interfaces seen throughout *Neon Genesis
+Evangelion*: dense information, bold warning states, sharp color hierarchy,
+technical labels, synchronization displays, and the feeling that every action
+belongs to a larger system.
+
+The goal is not to recreate any single screen pixel for pixel. It is to
+translate that visual language into a functional interface for real coding
+work:
+
+- important events should be impossible to miss;
+- activity should feel connected to the system producing it;
+- motion should communicate state, not decorate empty space;
+- dense information should still be readable at a glance;
+- the interface should feel cinematic without getting in your way.
+
+EVA is an ongoing experiment in making a TUI feel less like a text form and
+more like an instrument panel.
+
+## What you can do
+
+- **Run Codex in any workspace.** Start EVA in a project and send instructions
+  just as you would in another Codex client.
+- **Watch the operation unfold.** Follow the active plan, turn status, token
+  use, tool calls, file activity, and human-to-Codex synchronization.
+- **Move between focused views.** Use Operations, Stations, Impact, and
+  Transcript to inspect the session from different angles.
+- **Stay in control.** Approve or decline requested actions, authorize a
+  request for the session, or interrupt an active turn.
+- **Choose the rendering style.** Use the portable text renderer everywhere or
+  enable richer Kitty graphics in supported terminals.
+- **Add atmosphere if you want it.** Play a local audio file, an original
+  generated ambient loop, or a track through the visible YouTube companion
+  player. Audio is off by default.
+
+## Quick start
+
+### Requirements
+
+- Node.js 22 or newer
+- A current `codex` CLI installed, authenticated, and available on your
+  `PATH`
+- A terminal with color and Unicode support
+
+For the graphical console, you also need a modern browser.
+
+### Install
 
 ```sh
+git clone https://github.com/user074/eva-tui.git
+cd eva-tui
 npm install
 npm run build
-node dist/cli.js --tui
-node dist/cli.js --visual
-```
-
-During development:
-
-```sh
-npm run dev -- --tui
-npm run dev -- --visual
-```
-
-To make `eva` available as a command:
-
-```sh
 npm link
-eva --tui --cwd /path/to/project
+```
+
+### Start EVA
+
+Open the terminal interface in your current project:
+
+```sh
+eva
+```
+
+Open a specific workspace:
+
+```sh
+eva --cwd /path/to/project
+```
+
+Or launch the local graphical console:
+
+```sh
 eva --visual --cwd /path/to/project
 ```
 
-Useful options:
+The graphical console binds only to `127.0.0.1` and opens in your default
+browser. It is a local renderer, not a hosted service.
+
+## Everyday controls
+
+| Key | Action |
+| --- | --- |
+| `Enter` | Send your instruction to Codex |
+| `Tab` / `Shift-Tab` | Cycle through Operations, Stations, Impact, and Transcript |
+| Mouse wheel / `Up` / `Down` | Scroll the conversation or inspect station activity |
+| `Page Up` / `Page Down` | Scroll the active conversation view |
+| `Escape` | Return to Operations or dismiss a simulation |
+| `Ctrl-C` | Interrupt an active turn; exit while idle |
+| `Ctrl-G` | Toggle audio |
+| `Ctrl-Q` | Exit EVA |
+| `Y` / `A` / `N` | Approve once, approve for the session, or decline |
+
+Apple Terminal users should enable **View → Allow Mouse Reporting** for
+trackpad scrolling.
+
+## Useful options
 
 ```sh
 eva --tui
 eva --visual
-eva --visual --port 0
-eva --visual --no-open
-eva --model gpt-5.6-codex
-eva --music "/path/to/your/licensed-track.mp3"
-eva --music "/path/to/your/licensed-track.mp3" --audio
-eva --youtube "https://music.youtube.com/watch?v=3BqrH0BzqSo"
-eva --youtube "https://music.youtube.com/watch?v=3BqrH0BzqSo" --audio
+eva --model <model-name>
 eva --graphics text
 eva --graphics auto
 eva --graphics kitty
-EVA_TUI_MUSIC="/path/to/track.wav" eva
-EVA_TUI_YOUTUBE="https://music.youtube.com/watch?v=3BqrH0BzqSo" eva
-EVA_TUI_GRAPHICS=kitty eva
+eva --music "/path/to/your/track.mp3"
+eva --youtube "https://music.youtube.com/watch?v=..."
+eva --audio
 ```
 
-Audio can be toggled at any time with `Ctrl-G` or by entering `/music`.
-`--music` and `--youtube` are mutually exclusive.
+- `--graphics text` uses the portable renderer and works in standard
+  terminals.
+- `--graphics auto` enables the image renderer when EVA detects a compatible
+  terminal.
+- `--graphics kitty` explicitly requests Kitty graphics support in Kitty,
+  Ghostty, or WezTerm.
+- `--music` and `--youtube` are optional and cannot be used together.
 
-Quoted home-relative music paths are expanded by EVA, so both
-`--music ~/Downloads/track.mp3` and `--music "~/Downloads/track.mp3"` work.
+Run `eva --help` for the complete command reference.
 
-## Visual console
+## Safe visual simulations
 
-`eva --visual` binds only to `127.0.0.1`, creates an unpredictable session
-token, prints the protected URL, and opens it in the default browser. Use
-`--no-open` to print the URL without opening it or `--port 0` to select a free
-port.
+EVA includes earthquake and tsunami interface simulations so you can explore
+the visual system without changing your workspace or starting a Codex turn.
 
-The first graphical version includes:
-
-- a live Operations display with turn state, an always-active Operation Spine,
-  transcript, activity, token use, and workspace propagation;
-- a responsive Station Matrix made from the attributed upstream station blade
-  SVGs and state-derived system nodes;
-- a workspace Impact field and full Transcript display;
-- full-screen, explicitly marked earthquake and tsunami UI simulations;
-- full-screen Codex approval gates with authorize-once, authorize-session, and
-  decline actions;
-- command submission, turn interruption, scene selection, and audio toggling.
-
-The graphical layer contains no Codex credentials and does not talk to OpenAI
-directly. Closing its terminal process tears down the Codex child process,
-audio director, event stream, and local server. The renderer boundary and
-security model are documented in
-[`docs/VISUAL_CONSOLE.md`](docs/VISUAL_CONSOLE.md).
-
-## Controls
-
-| Key | Action |
-| --- | --- |
-| `Enter` | Send the composer text to Codex |
-| `Tab` / `Shift-Tab` | Cycle Operations, Stations, Impact, and Transcript |
-| Mouse wheel / `Up` / `Down` | Scroll Operations COMM or the Transcript view |
-| `Page Up` / `Page Down` | Scroll the active conversation viewport three lines |
-| `Up` / `Down` on Stations | Select and inspect a Station Matrix node |
-| `Escape` | Return to Operations or dismiss a simulation |
-| `Ctrl-C` | Interrupt an active turn; exit while idle |
-| `Ctrl-G` | Toggle audio |
-| `Ctrl-Q` | Exit |
-| `Y` | Accept an approval |
-| `A` | Accept for the session |
-| `N` | Decline |
-| `Escape` | Deny and cancel the turn |
-
-In Apple Terminal, make sure **View → Allow Mouse Reporting** is checked for
-trackpad scrolling (`Command-R` toggles it). Terminal.app will not deliver
-trackpad events to a TUI when this setting is disabled, even if the application
-requests mouse reporting.
-
-Slash commands:
-
-- `/view operations`
-- `/view stations`
-- `/view impact`
-- `/view transcript`
-- `/simulate earthquake [0-100]` or `/eq [0-100]`
-- `/simulate tsunami` or `/tsunami`
-- `/music`, `/interrupt`, `/help`, and `/quit`
-
-Simulation screens are fixture-driven and always marked
-`試験 / SIMULATION`. They do not start a Codex turn or modify the workspace.
-For earthquake simulation, the optional percentage controls the synchronization
-scope: `0` shows three distinct continuous sine curves, while `100` converges
-their different starting amplitudes, frequencies, phases, and centerlines into
-one locked waveform. Plain `/eq` automatically sweeps from `0` to
-`100` over ten seconds and then remains locked. A real failure display follows
-the live human↔Codex synchronization ratio.
-
-The live Operations ratio uses local conversation timing only:
-
-- Establishing the Codex link starts at 18% and begins the initial
-  human-response clock.
-- Codex `turn/completed` starts the human-response clock.
-- The next submitted instruction records the response latency.
-- Every submitted instruction adds 0.5 points per word, capped at +10 points
-  for 20 words. Longer instructions cannot exceed that per-input cap.
-- Waiting has a 30-second grace period, then decays continuously at one point
-  per ten seconds until the human responds.
-- Entering the first character pauses decay while the human is composing; the
-  length-based increase is applied only when the instruction is submitted.
-- Time spent while Codex is running never reduces synchronization.
-- Target changes are eased into the displayed ratio and waveform rather than
-  appearing as instantaneous jumps; even a maximum input takes several seconds
-  to become fully visible.
-
-## Terminal graphics
-
-`--graphics text` is the default. It always selects the portable terminal
-renderer, including inside Apple Terminal, Kitty, Ghostty, and WezTerm. No
-graphics-capable terminal is required.
-
-`--graphics auto` is an explicit convenience mode. Outside tmux it enables the
-older Tier 3 image renderer when EVA detects Kitty, Ghostty, or WezTerm;
-otherwise it selects the portable text renderer.
-
-Tier 3 builds each scene as a high-resolution SVG composition, rasterizes it
-to a compressed PNG, transfers the PNG with the Kitty graphics protocol, creates
-a virtual image placement, and prints ordinary Unicode placeholder cells
-inside the Ink tree. That last step matters: Ink can continue to own layout,
-resizing, and alternate-screen cleanup while the terminal draws the image at
-native pixel quality.
-
-Use `--graphics kitty` to request the backend or `--graphics text` to disable
-it. A forced request exits with an actionable diagnostic when the current
-terminal does not identify itself as Kitty-compatible, instead of exposing the
-Unicode placeholder cells. Automatic mode stays on text inside tmux because
-Kitty passthrough must be enabled explicitly; after configuring tmux
-passthrough, request Kitty mode.
-
-The portable renderer is a separate semantic composition of the same scene
-hierarchy. It uses true-color ANSI styling, real selectable text, Unicode
-chassis lines, East Asian double-width labels, and discrete animation.
-Large functional containers are painted as rectangular cell backgrounds so
-terminal font padding cannot create seams. Reference SVG masks remain
-available for compact motifs and the tsunami composition, but the earthquake
-and station screens preserve their hierarchy and color mass without forcing
-polygon silhouettes into a low-resolution grid. The screen is never converted
-into a block-pixel screenshot.
-
-The reusable visual vocabulary, reference mapping, responsive rules, animation
-rules, and anti-patterns are documented in
-[`docs/TUI_DESIGN_GUIDE.md`](docs/TUI_DESIGN_GUIDE.md). Run
-`npm run preview:tui` to generate deterministic standard and compact scene
-previews.
-
-## Ratatui prototype
-
-An isolated Rust/Ratatui renderer now provides a higher-fidelity native TUI
-experiment without replacing `eva --tui`. Its active screens use large,
-gapless background-filled alert plates and rectangular station blocks, while
-retaining the checked-in reference assets' color hierarchy and mechanical
-panel rhythm. Diagonal glyphs remain limited to small warning motifs, while
-Braille is reserved for animated synchronization signals. The first functional
-screens are Earthquake and Stations.
-
-After installing Rust, run:
-
-```sh
-npm run dev:ratatui -- --scene earthquake
-npm run dev:ratatui -- --scene stations
+```text
+/simulate earthquake
+/simulate earthquake 75
+/simulate tsunami
 ```
 
-This prototype is currently fixture-driven and does not yet connect to Codex.
-Its architecture, asset mapping, controls, deterministic dump mode, SVG
-comparison export, and planned renderer protocol are documented in
-[`docs/RATATUI_PROTOTYPE.md`](docs/RATATUI_PROTOTYPE.md).
+Every simulation is clearly marked `試験 / SIMULATION`.
 
-## Music and visual references
+## Project status
 
-`E01_EWS_Amano&Kosei` is a commercially released recording. It is not
-downloaded, copied, or redistributed by this project. If you have a lawful
-local copy, pass its path with `--music`. With no path, EVA TUI synthesizes
-an original low drone into a temporary WAV file and deletes it at shutdown.
+EVA is experimental software. Version 0.5 supports the core Codex thread and
+turn experience, live operational views, approvals, interruption, simulations,
+audio controls, and both terminal and local-browser rendering.
 
-When `--youtube` is selected, the first audio toggle opens a token-protected
-page on `127.0.0.1`. Click `ENABLE AUDIO / 音声開始` once to satisfy browser
-playback rules. After that, `Ctrl-G` sends play and pause commands to YouTube's
-official visible IFrame player. The companion loops the video when it ends and
-never exposes, downloads, extracts, or caches its media stream. Closing EVA TUI
-pauses the player and closes the local control server; the browser tab can then
-be closed normally.
+Expect the interface to keep evolving as the visual language becomes more
+cohesive and the Codex app-server surface develops.
 
-The companion accepts only HTTPS URLs from `youtube.com`,
-`music.youtube.com`, or `youtu.be`. A random session token protects every
-local control request, and the server binds only to the loopback interface.
+## Learn more
 
-Some YouTube uploads disable embedding. If YouTube reports that restriction,
-the companion displays `OPEN IN YOUTUBE MUSIC / 外部再生` and the TUI reports a
-playback fault. The external YouTube Music tab must then be controlled in the
-browser because YouTube does not expose its playback controls to the terminal.
-The supplied `E01_EWS_Amano&Kosei` upload currently has this restriction.
+- [TUI design guide](docs/TUI_DESIGN_GUIDE.md) — visual vocabulary, layout,
+  color, motion, and reference mapping
+- [Visual console](docs/VISUAL_CONSOLE.md) — local graphical renderer and
+  security boundary
+- [Ratatui prototype](docs/RATATUI_PROTOTYPE.md) — higher-fidelity native TUI
+  experiment
 
-The interface takes broad inspiration from late-1990s anime command-center
-graphics and community concepts such as
-[ews-concept-new](https://github.com/bagusindrayana/ews-concept-new) and
-[nerv-ui](https://github.com/mdrbx/nerv-ui). Version 0.5 includes selected
-warning, stripe, hex, and station-blade assets from `ews-concept-new` under its
-modified MIT license. Attribution and the complete upstream license are in
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
-`assets/ews-concept-new/LICENSE`. No anime screenshots, logos, commercial
-fonts, or music are included. EVA TUI is not affiliated with or endorsed by
-the referenced projects or their rights holders.
-
-## Why the boundary matters
-
-The visual and interaction layer lives entirely in this repository. The
-Codex CLI remains the execution engine and source of truth for configuration,
-authentication, sandboxing, tools, and model behavior. Protocol handling is
-isolated in `src/codex`, so a future Codex protocol change can be adapted
-without rewriting the UI.
-
-The app-server surface is still evolving. Version 0.5 deliberately supports
-the core thread/turn path and approvals first. Rich `requestUserInput`, MCP
-elicitation forms, history/resume, and dynamic client-hosted tools are planned
-follow-ups; unsupported server requests receive a clear protocol error rather
-than hanging the turn.
-
-## Verification
+For contributors:
 
 ```sh
+npm run dev -- --tui
+npm run dev -- --visual
 npm run typecheck
 npm test
-npm run build
-npm run preview:tui
 ```
 
-Licensed under Apache-2.0.
+## Inspiration and attribution
+
+EVA takes broad creative inspiration from the command-center interfaces of
+*Neon Genesis Evangelion* and from community projects including
+[ews-concept-new](https://github.com/bagusindrayana/ews-concept-new) and
+[nerv-ui](https://github.com/mdrbx/nerv-ui).
+
+Selected warning, stripe, hex, and station-blade assets from
+`ews-concept-new` are included under its modified MIT license. Full
+attribution and the upstream license are available in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
+`assets/ews-concept-new/LICENSE`.
+
+No anime screenshots, official logos, commercial fonts, or copyrighted music
+are distributed with this project. EVA is an unofficial fan-made project and
+is not affiliated with or endorsed by the referenced creators, projects, or
+rights holders.
+
+## License
+
+EVA is licensed under the Apache License 2.0.
